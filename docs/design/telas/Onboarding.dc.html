@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Criar família — Contas da Casa</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="cc-theme.css">
+<link rel="stylesheet" href="ds/contasdacasa/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..700&amp;family=Instrument+Sans:wght@400..700&amp;display=swap">
+<style>
+body{margin:0;background:#f6f3ec}
+a{color:#8f3d1c}a:hover{color:#6e2d13}
+</style>
+</helmet>
+<div data-theme="{{theme}}" style="min-height:100vh;background:var(--surface);color:var(--ink);font-family:var(--font-sans);display:flex;justify-content:center;padding:32px 16px 48px;box-sizing:border-box">
+  <main style="width:100%;max-width:560px;display:flex;flex-direction:column;gap:24px">
+    <span class="cc-logo" style="padding:0;color:var(--brand-ink)">Contas da Casa</span>
+
+    <ol style="list-style:none;margin:0;padding:0;display:flex;gap:8px;flex-wrap:wrap" aria-label="Etapas">
+      <li class="cc-badge cc-badge--paid"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>1. Sua conta</li>
+      <li class="cc-badge" style="background:var(--brand-soft);color:var(--brand-ink)" aria-current="step">2. Sua família</li>
+      <li class="cc-badge" style="background:var(--surface-sunken);color:var(--ink-muted)">3. Convidar</li>
+    </ol>
+
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <h1 class="heading">Crie a sua família</h1>
+      <span class="body cc-muted">É onde ficam as contas de todos. Você será o dono e pode convidar os outros membros em seguida.</span>
+    </div>
+
+    <form class="cc-card" style="display:flex;flex-direction:column;gap:16px">
+      <label class="cc-field"><span class="cc-field__label">Nome da família</span><span class="cc-input"><input class="cc-input__text" value="Família Lima"></span><span class="cc-field__hint">Aparece no menu e nos convites.</span></label>
+      <div class="cc-field">
+        <span class="cc-field__label">Você é</span>
+        <div class="cc-seg" role="group" aria-label="Seu parentesco">
+          <button type="button" aria-pressed="true">Titular</button>
+          <button type="button" aria-pressed="false">Cônjuge</button>
+          <button type="button" aria-pressed="false">Outro</button>
+        </div>
+      </div>
+      <div class="cc-field">
+        <span class="cc-field__label">Como dividir as despesas da família</span>
+        <div class="cc-seg" role="group" aria-label="Regra de divisão">
+          <button type="button" aria-pressed="false">Partes iguais</button>
+          <button type="button" aria-pressed="true">Proporcional ao salário</button>
+          <button type="button" aria-pressed="false">Personalizada</button>
+        </div>
+        <span class="cc-field__hint">Dá para mudar depois, inclusive mês a mês.</span>
+      </div>
+      <div class="cc-formfoot">
+        <button type="button" class="cc-btn cc-btn--primary">Criar família e continuar</button>
+      </div>
+    </form>
+
+    <section class="cc-card" style="display:flex;flex-direction:column;gap:12px;background:var(--surface-sunken);border:0;box-shadow:none">
+      <h2 class="title">Próximo: convidar quem divide as contas com você</h2>
+      <div class="cc-input" style="background:var(--surface-raised)"><input class="cc-input__text" type="email" value="" placeholder="email do cônjuge"></div>
+      <span class="caption cc-muted">Você também pode adicionar filhos como dependentes, sem login. Pular esta etapa não perde nada.</span>
+    </section>
+
+    <div class="cc-card" style="display:flex;flex-direction:column;gap:4px">
+      <span class="label">Recebeu um convite?</span>
+      <span class="caption cc-muted">Não crie outra família: abra o link do convite e você entra direto na família que te convidou.</span>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"$preview":{"width":1280,"height":980}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { theme: this.props.theme ?? 'light' };
+  }
+}
+</script>
+</body>
+</html>

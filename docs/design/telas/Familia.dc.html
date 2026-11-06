@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Família — Contas da Casa</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="cc-theme.css">
+<link rel="stylesheet" href="ds/contasdacasa/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..700&amp;family=Instrument+Sans:wght@400..700&amp;display=swap">
+<style>
+body{margin:0;background:#f6f3ec}
+a{color:#8f3d1c}a:hover{color:#6e2d13}
+</style>
+</helmet>
+<div class="cc-app" data-theme="{{theme}}">
+  <aside class="cc-side">
+    <div class="cc-logo">Contas da Casa</div>
+    <nav class="cc-nav" aria-label="Principal">
+      <a href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"></rect><rect x="14" y="3" width="7" height="5" rx="1.5"></rect><rect x="14" y="12" width="7" height="9" rx="1.5"></rect><rect x="3" y="16" width="7" height="5" rx="1.5"></rect></svg>Dashboard</a>
+      <a href="Despesas.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"></path></svg>Despesas</a>
+      <a href="Fechamento.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>Fechamento do mês</a>
+      <a href="Categorias.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>Tipos de despesa</a>
+      <a href="Familia.dc.html" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path></svg>Família</a>
+    </nav>
+    <a class="cc-btn cc-btn--primary" href="NovaDespesa.dc.html" style="text-decoration:none">Lançar despesa</a>
+    <div class="cc-side__foot"><span class="cc-avatar cc-avatar--a cc-avatar--lg">J</span><div style="display:flex;flex-direction:column"><span class="label">Jefferson</span><span class="caption cc-muted">Família Lima · 3 membros</span></div></div>
+  </aside>
+
+  <header class="cc-mtop">
+    <span class="cc-logo" style="padding:0;font-size:19px">Família</span>
+    <span class="cc-avatar cc-avatar--a cc-avatar--lg">J</span>
+  </header>
+
+  <main class="cc-main">
+    <div class="cc-wrap">
+      <div class="cc-top">
+        <div class="cc-top__titles">
+          <span class="label cc-muted">Sua família</span>
+          <h1 class="heading">Família Lima</h1>
+          <span class="body cc-muted">3 membros e 1 convite pendente. Todos veem os lançamentos de todos; cada um lança as próprias despesas.</span>
+        </div>
+        <button type="button" class="cc-btn cc-btn--secondary">Renomear família</button>
+      </div>
+
+      <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start">
+        <section style="flex:999 1 520px;min-width:0;display:flex;flex-direction:column;gap:12px">
+          <h2 class="title">Membros</h2>
+          <div class="cc-list">
+            <div class="cc-member"><span class="cc-avatar cc-avatar--a">J</span><div class="cc-member__main"><span class="cc-member__name">Jefferson <span class="cc-role cc-role--owner">Dono</span></span><span class="cc-member__meta">Titular · jefferson@… · participa da divisão</span></div><button type="button" class="cc-btn cc-btn--ghost cc-btn--sm">Editar</button></div>
+            <div class="cc-member"><span class="cc-avatar cc-avatar--b">L</span><div class="cc-member__main"><span class="cc-member__name">Lorrane <span class="cc-role">Admin</span></span><span class="cc-member__meta">Cônjuge · lorrane@… · participa da divisão</span></div><button type="button" class="cc-btn cc-btn--ghost cc-btn--sm">Editar</button></div>
+            <div class="cc-member"><span class="cc-avatar cc-avatar--c">F</span><div class="cc-member__main"><span class="cc-member__name">Filho(a) <span class="cc-role">Dependente</span></span><span class="cc-member__meta">Sem login · despesas lançadas pelos pais · fora da divisão</span></div><button type="button" class="cc-btn cc-btn--ghost cc-btn--sm">Editar</button></div>
+            <div class="cc-member"><span class="cc-avatar cc-avatar--d">?</span><div class="cc-member__main"><span class="cc-member__name">parente@email.com <span class="cc-role cc-role--invited">Convite pendente</span></span><span class="cc-member__meta">Outro parente · membro · expira em 13/11</span></div><button type="button" class="cc-btn cc-btn--ghost cc-btn--sm">Reenviar</button></div>
+          </div>
+
+          <div class="cc-card" style="display:flex;flex-direction:column;gap:12px">
+            <h2 class="title">O que cada papel pode fazer</h2>
+            <div class="cc-tablebox" style="box-shadow:none">
+              <table class="cc-table" style="min-width:520px">
+                <thead><tr><th>Papel</th><th>Lançar e editar as próprias</th><th>Editar as dos outros</th><th>Membros, mês e cadastros</th></tr></thead>
+                <tbody>
+                  <tr><td><b>Dono</b></td><td>Sim</td><td>Sim</td><td>Sim, e pode excluir a família</td></tr>
+                  <tr><td><b>Admin</b></td><td>Sim</td><td>Sim</td><td>Sim</td></tr>
+                  <tr><td><b>Membro</b></td><td>Sim</td><td>Não</td><td>Não</td></tr>
+                  <tr><td><b>Dependente</b></td><td colspan="3" class="cc-muted">Sem login; dono e admin lançam por ele</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <aside style="flex:1 1 320px;min-width:0;display:flex;flex-direction:column;gap:24px">
+          <form class="cc-card" style="display:flex;flex-direction:column;gap:16px">
+            <h2 class="title">Convidar membro</h2>
+            <label class="cc-field"><span class="cc-field__label">Email</span><span class="cc-input"><input class="cc-input__text" type="email" value="" placeholder="nome@email.com"></span></label>
+            <label class="cc-field"><span class="cc-field__label">Parentesco</span><select class="cc-select" style="height:44px"><option>Cônjuge</option><option>Filho(a)</option><option>Outro</option></select></label>
+            <label class="cc-field"><span class="cc-field__label">Papel</span><select class="cc-select" style="height:44px"><option>Membro</option><option>Admin</option></select></label>
+            <label class="cc-check"><input type="checkbox" checked>Participa da divisão das despesas da família</label>
+            <button type="button" class="cc-btn cc-btn--primary">Enviar convite</button>
+            <span class="caption cc-muted">O convite vale 7 dias. Sem email configurado, o app mostra um link para você mandar por WhatsApp.</span>
+          </form>
+          <div class="cc-card" style="display:flex;flex-direction:column;gap:12px">
+            <h2 class="title">Dependente sem login</h2>
+            <span class="body cc-muted">Para filhos ou quem não vai usar o app. As despesas dele ficam separadas, e você escolhe se ele entra na divisão.</span>
+            <button type="button" class="cc-btn cc-btn--secondary">Adicionar dependente</button>
+          </div>
+          <a class="cc-btn cc-btn--secondary cc-only-sm" href="Categorias.dc.html" style="text-decoration:none">Tipos de despesa</a>
+        </aside>
+      </div>
+    </div>
+  </main>
+
+  <nav class="cc-bottom" aria-label="Principal">
+    <a href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"></rect><rect x="14" y="3" width="7" height="5" rx="1.5"></rect><rect x="14" y="12" width="7" height="9" rx="1.5"></rect><rect x="3" y="16" width="7" height="5" rx="1.5"></rect></svg>Início</a>
+    <a href="Despesas.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"></path></svg>Despesas</a>
+    <a class="cc-fab" href="NovaDespesa.dc.html" aria-label="Lançar despesa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></a>
+    <a href="Fechamento.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>Mês</a>
+    <a href="Familia.dc.html" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path></svg>Família</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"$preview":{"width":1280,"height":1100}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { theme: this.props.theme ?? 'light' };
+  }
+}
+</script>
+</body>
+</html>

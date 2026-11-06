@@ -1,0 +1,19 @@
+# Só o app (porta 3000). O Postgres é externo: informe DATABASE_URL no .env.
+services:
+  app:
+    build: .
+    image: contas-da-casa:latest
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file: .env
+    environment:
+      NODE_ENV: production
+
+  # Uso pontual: docker compose run --rm migrate
+  migrate:
+    build:
+      context: .
+      target: migrate
+    env_file: .env
+    profiles: ["tools"]

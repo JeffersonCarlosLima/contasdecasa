@@ -1,0 +1,9 @@
+@import "tailwindcss";
+@import "../styles/tokens.css";
+@import "../styles/theme.css";
+@import "../styles/components.css";
+@import "../styles/layout.css";
+
+html { color-scheme: light; }
+html[data-theme="dark"] { color-scheme: dark; }
+body { background: var(--surface); color: var(--ink); font-family: var(--font-sans); }

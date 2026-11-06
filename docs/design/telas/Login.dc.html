@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Entrar — Contas da Casa</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="cc-theme.css">
+<link rel="stylesheet" href="ds/contasdacasa/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..700&amp;family=Instrument+Sans:wght@400..700&amp;display=swap">
+<style>
+body{margin:0;background:#f6f3ec}
+a{color:#8f3d1c}a:hover{color:#6e2d13}
+</style>
+</helmet>
+<div data-theme="{{theme}}" style="min-height:100vh;display:flex;flex-wrap:wrap;background:var(--surface);color:var(--ink);font-family:var(--font-sans)">
+  <section class="cc-hide-sm" aria-hidden="true" style="flex:1 1 480px;min-width:0;background:var(--brand);color:var(--on-brand);display:flex;flex-direction:column;justify-content:space-between;padding:48px;box-sizing:border-box;position:relative;overflow:hidden">
+    <svg viewBox="0 0 480 220" style="position:absolute;left:0;right:0;bottom:0;width:100%;height:auto;opacity:0.9" preserveAspectRatio="xMidYMax slice">
+      <g fill="var(--brand-soft)">
+        <path d="M0 100a20 20 0 0 1 40 0zM40 100a20 20 0 0 1 40 0zM80 100a20 20 0 0 1 40 0zM120 100a20 20 0 0 1 40 0zM160 100a20 20 0 0 1 40 0zM200 100a20 20 0 0 1 40 0zM240 100a20 20 0 0 1 40 0zM280 100a20 20 0 0 1 40 0zM320 100a20 20 0 0 1 40 0zM360 100a20 20 0 0 1 40 0zM400 100a20 20 0 0 1 40 0zM440 100a20 20 0 0 1 40 0z"></path>
+        <path d="M-20 140a20 20 0 0 1 40 0zM20 140a20 20 0 0 1 40 0zM60 140a20 20 0 0 1 40 0zM100 140a20 20 0 0 1 40 0zM140 140a20 20 0 0 1 40 0zM180 140a20 20 0 0 1 40 0zM220 140a20 20 0 0 1 40 0zM260 140a20 20 0 0 1 40 0zM300 140a20 20 0 0 1 40 0zM340 140a20 20 0 0 1 40 0zM380 140a20 20 0 0 1 40 0zM420 140a20 20 0 0 1 40 0zM460 140a20 20 0 0 1 40 0z"></path>
+        <path d="M0 180a20 20 0 0 1 40 0zM40 180a20 20 0 0 1 40 0zM80 180a20 20 0 0 1 40 0zM120 180a20 20 0 0 1 40 0zM160 180a20 20 0 0 1 40 0zM200 180a20 20 0 0 1 40 0zM240 180a20 20 0 0 1 40 0zM280 180a20 20 0 0 1 40 0zM320 180a20 20 0 0 1 40 0zM360 180a20 20 0 0 1 40 0zM400 180a20 20 0 0 1 40 0zM440 180a20 20 0 0 1 40 0z"></path>
+        <rect x="0" y="180" width="480" height="40"></rect>
+      </g>
+    </svg>
+    <div class="cc-logo" style="padding:0;position:relative">Contas da Casa</div>
+    <div style="position:relative;max-width:420px;margin-bottom:200px">
+      <p class="display" style="font-size:44px;line-height:48px">As contas da família, cada um no seu lugar.</p>
+    </div>
+  </section>
+
+  <main style="flex:1 1 420px;min-width:0;display:flex;align-items:center;justify-content:center;padding:32px 16px;box-sizing:border-box">
+    <div style="width:100%;max-width:400px;display:flex;flex-direction:column;gap:24px">
+      <div class="cc-only-sm" style="display:flex;flex-direction:column;gap:8px">
+        <span class="cc-logo" style="padding:0;color:var(--brand-ink)">Contas da Casa</span>
+        <span class="body cc-muted">As contas da família, cada um no seu lugar.</span>
+      </div>
+      <div class="cc-seg" role="group" aria-label="Acesso" style="align-self:flex-start">
+        <button type="button" aria-pressed="true">Entrar</button>
+        <button type="button" aria-pressed="false">Criar conta</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <h1 class="heading">Bem-vindo de volta</h1>
+        <span class="body cc-muted">Entre com o email e a senha que você cadastrou.</span>
+      </div>
+      <form style="display:flex;flex-direction:column;gap:16px">
+        <label class="cc-field"><span class="cc-field__label">Email</span><span class="cc-input"><input class="cc-input__text" type="email" value="" placeholder="voce@email.com" autocomplete="email"></span></label>
+        <label class="cc-field"><span class="cc-field__label">Senha</span><span class="cc-input"><input class="cc-input__text" type="password" value="" placeholder="Sua senha" autocomplete="current-password"></span></label>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+          <label class="cc-check"><input type="checkbox" checked>Manter conectado</label>
+          <a href="#" class="label">Esqueci a senha</a>
+        </div>
+        <button type="button" class="cc-btn cc-btn--primary" style="height:46px">Entrar</button>
+      </form>
+      <div class="cc-card" style="background:var(--surface-sunken);border:0;box-shadow:none;padding:16px;display:flex;flex-direction:column;gap:4px">
+        <span class="label">Recebeu um convite?</span>
+        <span class="caption cc-muted">Crie sua conta com o mesmo email do convite e você entra direto na família que te convidou.</span>
+      </div>
+      <span class="body cc-muted">Primeira vez aqui? <a href="Onboarding.dc.html">Crie sua conta e sua família</a></span>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"$preview":{"width":1280,"height":820}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { theme: this.props.theme ?? 'light' };
+  }
+}
+</script>
+</body>
+</html>

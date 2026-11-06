@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Despesas — Contas da Casa</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="cc-theme.css">
+<link rel="stylesheet" href="ds/contasdacasa/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..700&amp;family=Instrument+Sans:wght@400..700&amp;display=swap">
+<style>
+body{margin:0;background:#f6f3ec}
+a{color:#8f3d1c}a:hover{color:#6e2d13}
+</style>
+</helmet>
+<div class="cc-app" data-theme="{{theme}}">
+  <aside class="cc-side">
+    <div class="cc-logo">Contas da Casa</div>
+    <nav class="cc-nav" aria-label="Principal">
+      <a href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"></rect><rect x="14" y="3" width="7" height="5" rx="1.5"></rect><rect x="14" y="12" width="7" height="9" rx="1.5"></rect><rect x="3" y="16" width="7" height="5" rx="1.5"></rect></svg>Dashboard</a>
+      <a href="Despesas.dc.html" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"></path></svg>Despesas</a>
+      <a href="Fechamento.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>Fechamento do mês</a>
+      <a href="Categorias.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>Tipos de despesa</a>
+      <a href="Familia.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path></svg>Família</a>
+    </nav>
+    <a class="cc-btn cc-btn--primary" href="NovaDespesa.dc.html" style="text-decoration:none">Lançar despesa</a>
+    <div class="cc-side__foot"><span class="cc-avatar cc-avatar--a cc-avatar--lg">J</span><div style="display:flex;flex-direction:column"><span class="label">Jefferson</span><span class="caption cc-muted">Família Lima · 3 membros</span></div></div>
+  </aside>
+
+  <header class="cc-mtop">
+    <span class="cc-logo" style="padding:0;font-size:19px">Despesas</span>
+    <span class="cc-avatar cc-avatar--a cc-avatar--lg">J</span>
+  </header>
+
+  <main class="cc-main">
+    <div class="cc-wrap">
+      <div class="cc-top">
+        <div class="cc-top__titles">
+          <h1 class="heading cc-hide-sm">Despesas da família</h1>
+          <span class="body cc-muted">9 lançamentos · R$ 6.135,17 · R$ 5.235,17 pendentes</span>
+        </div>
+        <div class="cc-actions">
+          <div class="cc-month">
+            <button class="cc-month__btn" aria-label="Mês anterior"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></button>
+            <span class="cc-month__label">Novembro 2026</span>
+            <button class="cc-month__btn" aria-label="Próximo mês"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg></button>
+          </div>
+          <a class="cc-btn cc-btn--primary cc-hide-sm" href="NovaDespesa.dc.html" style="text-decoration:none">Lançar despesa</a>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="cc-filters" style="justify-content:space-between">
+          <div class="cc-seg" role="group" aria-label="Agrupar">
+            <button type="button" aria-pressed="true">Por pessoa</button>
+            <button type="button" aria-pressed="false">Por data</button>
+          </div>
+          <div class="cc-filters">
+            <label for="f-status" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Status</label>
+            <select id="f-status" class="cc-select"><option>Todos os status</option><option>Pago</option><option>Pendente</option><option>Atrasado</option></select>
+            <label for="f-cat" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Tipo de despesa</label>
+            <select id="f-cat" class="cc-select"><option>Todos os tipos</option><option>Moradia</option><option>Transporte</option><option>Cartões</option><option>Contas da casa</option></select>
+          </div>
+        </div>
+        <div class="cc-filters" role="group" aria-label="Membros">
+          <button type="button" class="cc-chip" aria-pressed="true">Todos</button>
+          <button type="button" class="cc-chip" aria-pressed="false"><span class="cc-avatar cc-avatar--a">J</span>Jefferson</button>
+          <button type="button" class="cc-chip" aria-pressed="false"><span class="cc-avatar cc-avatar--b">L</span>Lorrane</button>
+          <button type="button" class="cc-chip" aria-pressed="false"><span class="cc-avatar cc-avatar--c">F</span>Filho(a)</button>
+          <button type="button" class="cc-chip" aria-pressed="false"><span class="cc-avatar cc-avatar--family" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V21H3z"></path></svg></span>Família</button>
+        </div>
+      </div>
+
+      <div class="cc-tablebox cc-hide-sm">
+        <div class="cc-group__head"><span class="cc-group__who"><span class="cc-avatar cc-avatar--a cc-avatar--lg">J</span>Jefferson</span><span class="cc-group__sum">4 despesas · <b>R$ 3.847,17</b> · pago R$ 0,00 · pendente R$ 3.847,17</span></div>
+        <table class="cc-table">
+          <thead><tr><th>Descrição</th><th>Tipo</th><th>Vencimento</th><th>Parcela</th><th>Lançado por</th><th style="text-align:right">Valor</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td><b>Inter</b></td><td><span class="cc-cat__name"><span class="cc-chip__dot" style="background:var(--chart-4)"></span>Cartões</span></td><td>10/11</td><td class="cc-muted">—</td><td>Jefferson</td><td class="num">R$ 500,00</td><td><span class="cc-badge cc-badge--pending">Pendente</span></td></tr>
+            <tr><td><b>Fatura Bradesco</b><div class="caption cc-muted">Inclui seguro do carro</div></td><td><span class="cc-cat__name"><span class="cc-chip__dot" style="background:var(--chart-4)"></span>Cartões</span></td><td>12/11</td><td class="cc-muted">—</td><td>Jefferson</td><td class="num">R$ 2.497,17</td><td><span class="cc-badge cc-badge--pending">Pendente</span></td></tr>
+            <tr><td><b>Manutenção do carro</b></td><td><span class="cc-cat__name"><span class="cc-chip__dot" style="background:var(--chart-3)"></span>Transporte</span></td><td>20/11</td><td class="cc-muted">—</td><td>Lorrane</td><td class="num">R$ 250,00</td><td><span class="cc-badge cc-badge--pending">Pendente</span></td></tr>
+            <tr><td><b>Gasolina</b></td><td><span class="cc-cat__name"><span class="cc-chip__dot" style="background:var(--chart-3)"></span>Transporte</span></td><td>30/11</td><td class="cc-muted">Recorrente</td><td>Jefferson</td><td class="num">R$ 600,00</td><td><span class="cc-badge cc-badge--pending">Pendente</span></td></tr>
+          </tbody>
+        </table>
+        <div class="cc-group__head"><span class="cc-group__who"><span class="cc-avatar cc-avatar--b cc-avatar--lg">L</span>Lorrane</span><span class="cc-group__sum">1 despesa · <b>R$ 1.088,00</b> · pago R$ 0,00 · atrasado R$ 1.088,00</span></div>
+        <table class="cc-table">
+          <tbody>
+            <tr><td><b>Parcela do carro</b></td><td><span class="cc-cat__name"><span class="cc-chip__dot" style="background:var(--chart-3)"></span>Transporte</span></td><td>03/11</td><td>7 de 8</td><td>Lorrane</td><td class="num">R$ 1.088,00</td><td><span class="cc-badge cc-badge--late">Atrasado</span></td></tr>
+          </tbody>
+        </table>
+        <div class="cc-group__head"><span class="cc-group__who"><span class="cc-avatar cc-avatar--family cc-avatar--lg" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V21H3z"></path></svg></span>Família <span class="caption cc-muted" style="font-weight:400">dividida entre Jefferson e Lorrane</span></span><span class="cc-group__sum">4 despesas · <b>R$ 1.200,00</b> · pago R$ 900,00 · pendente R$ 300,00</span></div>
+        <table class="cc-table">
+          <tbody>
+            <tr><td><b>Aluguel</b><div class="caption cc-muted">Pago por Jefferson em 05/11</div></td><td><span class="cc-cat__name"><span class="cc-chip__dot" style="background:var(--chart-1)"></span>Moradia</span></td><td>05/11</td><td class="cc-muted">Recorrente</td><td>Jefferson</td><td class="num">R$ 750,00</td><td><span class="cc-badge cc-badge--paid">Pago</span></td></tr>
+            <tr><td><b>Internet</b><div class="caption cc-muted">Pago por Lorrane em 08/11</div></td><td><span class="cc-cat__name"><span class="cc-chip__dot" style="background:var(--chart-5)"></span>Contas da casa</span></td><td>08/11</td><td class="cc-muted">Recorrente</td><td>Lorrane</td><td class="num">R$ 150,00</td><td><span class="cc-badge cc-badge--paid">Pago</span></td></tr>
+            <tr><td><b>Água</b></td><td><span class="cc-cat__name"><span class="cc-chip__dot" style="background:var(--chart-5)"></span>Contas da casa</span></td><td>14/11</td><td class="cc-muted">Recorrente</td><td>Lorrane</td><td class="num">R$ 150,00</td><td><span class="cc-badge cc-badge--pending">Pendente</span></td></tr>
+            <tr><td><b>Energia</b></td><td><span class="cc-cat__name"><span class="cc-chip__dot" style="background:var(--chart-5)"></span>Contas da casa</span></td><td>15/11</td><td class="cc-muted">Recorrente</td><td>Lorrane</td><td class="num">R$ 150,00</td><td><span class="cc-badge cc-badge--pending">Pendente</span></td></tr>
+          </tbody>
+        </table>
+        <div class="cc-group__head"><span class="cc-group__who"><span class="cc-avatar cc-avatar--c cc-avatar--lg">F</span>Filho(a)</span><span class="cc-group__sum">Nenhuma despesa em novembro</span></div>
+      </div>
+
+      <div class="cc-list cc-only-sm">
+        <div class="cc-group__head"><span class="cc-group__who"><span class="cc-avatar cc-avatar--a">J</span>Jefferson</span><span class="cc-group__sum"><b>R$ 3.847,17</b></span></div>
+        <div class="cc-expense"><div class="cc-expense__icon"><span style="background:var(--chart-4)"></span></div><div class="cc-expense__main"><span class="cc-expense__title">Inter</span><span class="cc-expense__meta">vence 10/11 · Cartões</span></div><div class="cc-expense__side"><span class="cc-expense__value">R$ 500,00</span><span class="cc-badge cc-badge--pending">Pendente</span></div></div>
+        <div class="cc-expense"><div class="cc-expense__icon"><span style="background:var(--chart-4)"></span></div><div class="cc-expense__main"><span class="cc-expense__title">Fatura Bradesco</span><span class="cc-expense__meta">vence 12/11 · seguro do carro</span></div><div class="cc-expense__side"><span class="cc-expense__value">R$ 2.497,17</span><span class="cc-badge cc-badge--pending">Pendente</span></div></div>
+        <div class="cc-expense"><div class="cc-expense__icon"><span style="background:var(--chart-3)"></span></div><div class="cc-expense__main"><span class="cc-expense__title">Manutenção do carro</span><span class="cc-expense__meta">vence 20/11 · lançado por Lorrane</span></div><div class="cc-expense__side"><span class="cc-expense__value">R$ 250,00</span><span class="cc-badge cc-badge--pending">Pendente</span></div></div>
+        <div class="cc-expense"><div class="cc-expense__icon"><span style="background:var(--chart-3)"></span></div><div class="cc-expense__main"><span class="cc-expense__title">Gasolina</span><span class="cc-expense__meta">vence 30/11 · recorrente</span></div><div class="cc-expense__side"><span class="cc-expense__value">R$ 600,00</span><span class="cc-badge cc-badge--pending">Pendente</span></div></div>
+        <div class="cc-group__head"><span class="cc-group__who"><span class="cc-avatar cc-avatar--b">L</span>Lorrane</span><span class="cc-group__sum"><b>R$ 1.088,00</b></span></div>
+        <div class="cc-expense"><div class="cc-expense__icon"><span style="background:var(--chart-3)"></span></div><div class="cc-expense__main"><span class="cc-expense__title">Parcela do carro</span><span class="cc-expense__meta">venceu 03/11 · 7 de 8</span></div><div class="cc-expense__side"><span class="cc-expense__value">R$ 1.088,00</span><span class="cc-badge cc-badge--late">Atrasado</span></div></div>
+        <div class="cc-group__head"><span class="cc-group__who"><span class="cc-avatar cc-avatar--family" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V21H3z"></path></svg></span>Família</span><span class="cc-group__sum"><b>R$ 1.200,00</b> · pago R$ 900,00</span></div>
+        <div class="cc-expense"><div class="cc-expense__icon"><span style="background:var(--chart-1)"></span></div><div class="cc-expense__main"><span class="cc-expense__title">Aluguel</span><span class="cc-expense__meta">pago por Jefferson · 05/11</span></div><div class="cc-expense__side"><span class="cc-expense__value">R$ 750,00</span><span class="cc-badge cc-badge--paid">Pago</span></div></div>
+        <div class="cc-expense"><div class="cc-expense__icon"><span style="background:var(--chart-5)"></span></div><div class="cc-expense__main"><span class="cc-expense__title">Internet</span><span class="cc-expense__meta">pago por Lorrane · 08/11</span></div><div class="cc-expense__side"><span class="cc-expense__value">R$ 150,00</span><span class="cc-badge cc-badge--paid">Pago</span></div></div>
+        <div class="cc-expense"><div class="cc-expense__icon"><span style="background:var(--chart-5)"></span></div><div class="cc-expense__main"><span class="cc-expense__title">Água</span><span class="cc-expense__meta">vence 14/11</span></div><div class="cc-expense__side"><span class="cc-expense__value">R$ 150,00</span><span class="cc-badge cc-badge--pending">Pendente</span></div></div>
+        <div class="cc-expense"><div class="cc-expense__icon"><span style="background:var(--chart-5)"></span></div><div class="cc-expense__main"><span class="cc-expense__title">Energia</span><span class="cc-expense__meta">vence 15/11</span></div><div class="cc-expense__side"><span class="cc-expense__value">R$ 150,00</span><span class="cc-badge cc-badge--pending">Pendente</span></div></div>
+        <div class="cc-group__head"><span class="cc-group__who"><span class="cc-avatar cc-avatar--c">F</span>Filho(a)</span><span class="cc-group__sum">Sem despesas</span></div>
+      </div>
+    </div>
+  </main>
+
+  <nav class="cc-bottom" aria-label="Principal">
+    <a href="Main.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"></rect><rect x="14" y="3" width="7" height="5" rx="1.5"></rect><rect x="14" y="12" width="7" height="9" rx="1.5"></rect><rect x="3" y="16" width="7" height="5" rx="1.5"></rect></svg>Início</a>
+    <a href="Despesas.dc.html" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"></path></svg>Despesas</a>
+    <a class="cc-fab" href="NovaDespesa.dc.html" aria-label="Lançar despesa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></a>
+    <a href="Fechamento.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>Mês</a>
+    <a href="Familia.dc.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path></svg>Família</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"$preview":{"width":1280,"height":1300}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { theme: this.props.theme ?? 'light' };
+  }
+}
+</script>
+</body>
+</html>
