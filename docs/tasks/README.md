@@ -12,7 +12,7 @@ cadastros → fechamento → despesas → dashboard → Docker. Commits pequenos
 | --- | --- | --- |
 | 00 | [Fundação do projeto](00-fundacao.md) | feito |
 | 01 | [Schema e migrations](01-schema.md) | feito (revisar com o Jefferson) |
-| 02 | [Autenticação](02-auth.md) | a fazer |
+| 02 | [Autenticação](02-auth.md) | código pronto; falta teste com banco e textos do cadastro |
 | 03 | [Família e convites](03-familia-convites.md) | a fazer |
 | 04 | [Cadastros: tipos e formas de pagamento](04-cadastros.md) | a fazer |
 | 05 | [Fechamento do mês](05-fechamento.md) | a fazer |
