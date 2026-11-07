@@ -13,6 +13,7 @@ import {
   monthlyPeriods,
   paymentMethods,
 } from "@/db/schema";
+import { cardInvoice } from "@/lib/card-invoice";
 import { todayISO } from "@/lib/dates";
 import {
   applyRules,
@@ -127,9 +128,15 @@ export async function uploadStatement(formData: FormData): Promise<UploadStateme
       };
     }
 
-    // Validação do meio de pagamento pertencer à família
+    // Validação do meio de pagamento pertencer à família, estar ativo e ser do tipo cartão ou conta
     const [pm] = await db
-      .select({ id: paymentMethods.id })
+      .select({
+        id: paymentMethods.id,
+        type: paymentMethods.type,
+        archived: paymentMethods.archived,
+        closingDay: paymentMethods.closingDay,
+        dueDay: paymentMethods.dueDay,
+      })
       .from(paymentMethods)
       .where(
         and(
@@ -142,6 +149,25 @@ export async function uploadStatement(formData: FormData): Promise<UploadStateme
     if (!pm) {
       return { ok: false, error: "Forma de pagamento não encontrada nesta família." };
     }
+
+    if (pm.archived) {
+      return {
+        ok: false,
+        error: "A forma de pagamento selecionada está arquivada.",
+      };
+    }
+
+    if (pm.type !== "cartao" && pm.type !== "conta") {
+      return {
+        ok: false,
+        error: "Apenas formas de pagamento do tipo cartão ou conta podem ser importadas.",
+      };
+    }
+
+    const isCardWithInvoice =
+      pm.type === "cartao" &&
+      typeof pm.closingDay === "number" &&
+      typeof pm.dueDay === "number";
 
     // shortcut: limpeza oportunista de rascunhos com mais de 30 dias, trocar por timer se o volume crescer
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
@@ -270,6 +296,31 @@ export async function uploadStatement(formData: FormData): Promise<UploadStateme
       const maxPaidAt = new Date(`${maxBatchDate}T23:59:59Z`);
       maxPaidAt.setUTCDate(maxPaidAt.getUTCDate() + 1);
 
+      // Janela de busca: se for cartão com fechamento/vencimento, expande até o maior vencimento calculado
+      let minQueryDueDate = minBatchDate;
+      let maxQueryDueDate = maxBatchDate;
+
+      if (isCardWithInvoice) {
+        const calculatedDueDates = parseResult.rows
+          .filter((r) => typeof r.date === "string" && r.date.length >= 10)
+          .map(
+            (r) =>
+              cardInvoice({
+                purchaseDate: r.date,
+                closingDay: pm.closingDay!,
+                dueDay: pm.dueDay!,
+              }).dueDate,
+          )
+          .sort();
+
+        if (calculatedDueDates.length > 0) {
+          const minCalc = calculatedDueDates[0];
+          const maxCalc = calculatedDueDates[calculatedDueDates.length - 1];
+          if (minCalc && minCalc < minQueryDueDate) minQueryDueDate = minCalc;
+          if (maxCalc && maxCalc > maxQueryDueDate) maxQueryDueDate = maxCalc;
+        }
+      }
+
       const candidateExpenses = await db
         .select({
           id: expenses.id,
@@ -286,8 +337,8 @@ export async function uploadStatement(formData: FormData): Promise<UploadStateme
             isNull(expenses.deletedAt),
             or(
               and(
-                gte(expenses.dueDate, minBatchDate),
-                lte(expenses.dueDate, maxBatchDate),
+                gte(expenses.dueDate, minQueryDueDate),
+                lte(expenses.dueDate, maxQueryDueDate),
               ),
               and(
                 isNotNull(expenses.paidAt),
@@ -361,7 +412,22 @@ export async function uploadStatement(formData: FormData): Promise<UploadStateme
       const finalOwner = ruleApplied?.ownerId !== undefined ? ruleApplied.ownerId : ownerMemberId;
       const finalPm = ruleApplied?.paymentMethodId ?? paymentMethodId;
 
-      const matched = matchStatus(row, {
+      const rowInvoice = isCardWithInvoice
+        ? cardInvoice({
+            purchaseDate: row.date,
+            closingDay: pm.closingDay!,
+            dueDay: pm.dueDay!,
+          })
+        : null;
+
+      const rowForMatch = rowInvoice
+        ? {
+            ...row,
+            date: rowInvoice.dueDate,
+          }
+        : row;
+
+      const matched = matchStatus(rowForMatch, {
         existingFingerprints,
         pendingExpenses,
         sameDayExpenses: sameDayCandidates,
@@ -929,6 +995,38 @@ export async function confirmBatch(
       return { ok: false, error: "Nenhum lançamento selecionado para confirmação." };
     }
 
+    // Carrega forma de pagamento do lote para verificar regra de fatura de cartão e status
+    const [batchPaymentMethod] = await db
+      .select({
+        id: paymentMethods.id,
+        type: paymentMethods.type,
+        archived: paymentMethods.archived,
+        closingDay: paymentMethods.closingDay,
+        dueDay: paymentMethods.dueDay,
+      })
+      .from(paymentMethods)
+      .where(
+        and(
+          eq(paymentMethods.id, batch.paymentMethodId),
+          eq(paymentMethods.familyId, sessionMember.familyId),
+        ),
+      )
+      .limit(1);
+
+    if (!batchPaymentMethod || batchPaymentMethod.archived) {
+      return {
+        ok: false,
+        error: !batchPaymentMethod
+          ? "Forma de pagamento não encontrada nesta família."
+          : "A forma de pagamento deste lote está arquivada e não pode ser confirmada.",
+      };
+    }
+
+    const isCardWithInvoice =
+      batchPaymentMethod?.type === "cartao" &&
+      typeof batchPaymentMethod.closingDay === "number" &&
+      typeof batchPaymentMethod.dueDay === "number";
+
     // Validação de categorias e membros
     for (const r of selectedRows) {
       if (r.type === "despesa" && !r.categoryId) {
@@ -948,7 +1046,19 @@ export async function confirmBatch(
 
     // Validação de meses fechados
     const uniqueMonths = Array.from(
-      new Set(selectedRows.map((r) => toMonthKey(toMonthDate(r.date)))),
+      new Set(
+        selectedRows.map((r) => {
+          if (r.type === "despesa" && !r.linkedExpenseId && isCardWithInvoice) {
+            const invoice = cardInvoice({
+              purchaseDate: r.date,
+              closingDay: batchPaymentMethod.closingDay!,
+              dueDay: batchPaymentMethod.dueDay!,
+            });
+            return toMonthKey(invoice.referenceMonth);
+          }
+          return toMonthKey(toMonthDate(r.date));
+        }),
+      ),
     );
 
     for (const m of uniqueMonths) {
@@ -985,19 +1095,32 @@ export async function confirmBatch(
               .set({ createdExpenseId: r.linkedExpenseId })
               .where(eq(importRows.id, r.id));
           } else {
-            // Cria nova despesa
+            // Cria nova despesa (com regra de fatura se for cartão com fechamento e vencimento)
+            let expenseReferenceMonth = rowMonthDate;
+            let expenseDueDate = r.date;
+
+            if (isCardWithInvoice) {
+              const invoice = cardInvoice({
+                purchaseDate: r.date,
+                closingDay: batchPaymentMethod.closingDay!,
+                dueDay: batchPaymentMethod.dueDay!,
+              });
+              expenseReferenceMonth = invoice.referenceMonth;
+              expenseDueDate = invoice.dueDate;
+            }
+
             const [newExp] = await tx
               .insert(expenses)
               .values({
                 familyId: sessionMember.familyId,
-                referenceMonth: rowMonthDate,
+                referenceMonth: expenseReferenceMonth,
                 description: r.descriptionOriginal,
                 amountCents: absAmount,
                 categoryId: r.categoryId!,
                 ownerMemberId: r.ownerMemberId,
                 createdByMemberId: sessionMember.member.id,
-                paymentMethodId: r.paymentMethodId ?? batch.paymentMethodId,
-                dueDate: r.date,
+                paymentMethodId: batch.paymentMethodId,
+                dueDate: expenseDueDate,
                 status: "pago",
                 paidAt: new Date(`${r.date}T12:00:00Z`),
                 paidByMemberId: r.ownerMemberId || sessionMember.member.id,
@@ -1185,12 +1308,55 @@ export async function undoBatch(
         ),
       );
 
-    // Validação de meses fechados
-    const uniqueMonths = Array.from(
-      new Set(rows.map((r) => toMonthKey(toMonthDate(r.date)))),
-    );
+    // Validação de meses fechados:
+    // Lê DIRETAMENTE o referenceMonth gravado nas despesas criadas ou vinculadas ao lote.
+    // NÃO recalcula cardInvoice nem consulta a forma de pagamento, garantindo que mesmo se
+    // o dia de fechamento ou vencimento do cartão for alterado após a importação, o desfazer
+    // respeitará com fidelidade total o mês gravado nas despesas da época.
+    const createdExpenses = await db
+      .select({ referenceMonth: expenses.referenceMonth })
+      .from(expenses)
+      .where(
+        and(
+          eq(expenses.importBatchId, batch.id),
+          eq(expenses.familyId, sessionMember.familyId),
+          isNull(expenses.deletedAt),
+        ),
+      );
 
-    for (const m of uniqueMonths) {
+    const linkedIds = rows
+      .map((r) => r.linkedExpenseId)
+      .filter((id): id is string => typeof id === "string" && id.length > 0);
+
+    const linkedExpenses =
+      linkedIds.length > 0
+        ? await db
+            .select({ referenceMonth: expenses.referenceMonth })
+            .from(expenses)
+            .where(
+              and(
+                inArray(expenses.id, linkedIds),
+                eq(expenses.familyId, sessionMember.familyId),
+                isNull(expenses.deletedAt),
+              ),
+            )
+        : [];
+
+    const monthsToCheck = new Set<string>([
+      ...createdExpenses.map((e) => toMonthKey(e.referenceMonth)),
+      ...linkedExpenses.map((e) => toMonthKey(e.referenceMonth)),
+      ...rows
+        .filter((r) => r.type === "receita" || r.type === "salario")
+        .map((r) => toMonthKey(toMonthDate(r.date))),
+    ]);
+
+    if (monthsToCheck.size === 0) {
+      for (const r of rows) {
+        monthsToCheck.add(toMonthKey(toMonthDate(r.date)));
+      }
+    }
+
+    for (const m of monthsToCheck) {
       await assertMonthOpen(sessionMember.familyId, m);
     }
 

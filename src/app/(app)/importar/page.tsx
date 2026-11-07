@@ -12,10 +12,22 @@ export const metadata: Metadata = {
 export default async function ImportarPage() {
   const { member, familyId, role } = await requireMember();
 
-  const [paymentMethods, familyData] = await Promise.all([
+  const [allPaymentMethods, familyData] = await Promise.all([
     listPaymentMethods(familyId),
     listFamily(familyId),
   ]);
+
+  const canEdit = role === "admin" || role === "dono";
+
+  // Apenas ativas do tipo cartão ou conta, ordenadas com as do membro logado primeiro, depois alfabética
+  const paymentMethods = allPaymentMethods
+    .filter((pm) => !pm.archived && (pm.type === "cartao" || pm.type === "conta"))
+    .sort((a, b) => {
+      const aIsSelf = a.ownerMemberId === member.id ? 0 : 1;
+      const bIsSelf = b.ownerMemberId === member.id ? 0 : 1;
+      if (aIsSelf !== bIsSelf) return aIsSelf - bIsSelf;
+      return a.name.localeCompare(b.name, "pt-BR");
+    });
 
   return (
     <main className="cc-main">
@@ -40,6 +52,7 @@ export default async function ImportarPage() {
         </div>
 
         <UploadForm
+          canEdit={canEdit}
           currentMember={{
             id: member.id,
             displayName: member.displayName,

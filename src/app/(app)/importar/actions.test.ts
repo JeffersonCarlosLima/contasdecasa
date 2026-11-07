@@ -184,12 +184,72 @@ describe("importar actions", () => {
       fd.append("paymentMethodId", pmId);
       fd.append("ownerMemberId", memberId);
 
-      mockDb.select.mockReturnValueOnce(createDbChain([{ id: pmId }]));
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([{ id: pmId, type: "conta", archived: false }]),
+      );
 
       const res = await uploadStatement(fd);
       expect(res.ok).toBe(false);
       if (!res.ok && "error" in res) {
         expect(res.error).toMatch(/Nenhum lançamento válido/);
+      }
+    });
+
+    it("rejeita forma de pagamento não encontrada na família", async () => {
+      const fd = new FormData();
+      const file = new File(["Data,Valor,Identificador,Descrição\n01/11/2026,-50.00,x,Mercado"], "extrato.csv", {
+        type: "text/csv",
+      });
+      fd.append("file", file);
+      fd.append("paymentMethodId", "pm-inexistente");
+      fd.append("ownerMemberId", memberId);
+
+      mockDb.select.mockReturnValueOnce(createDbChain([]));
+
+      const res = await uploadStatement(fd);
+      expect(res.ok).toBe(false);
+      if (!res.ok && "error" in res) {
+        expect(res.error).toMatch(/Forma de pagamento não encontrada/);
+      }
+    });
+
+    it("rejeita forma de pagamento arquivada", async () => {
+      const fd = new FormData();
+      const file = new File(["Data,Valor,Identificador,Descrição\n01/11/2026,-50.00,x,Mercado"], "extrato.csv", {
+        type: "text/csv",
+      });
+      fd.append("file", file);
+      fd.append("paymentMethodId", pmId);
+      fd.append("ownerMemberId", memberId);
+
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([{ id: pmId, type: "cartao", archived: true }]),
+      );
+
+      const res = await uploadStatement(fd);
+      expect(res.ok).toBe(false);
+      if (!res.ok && "error" in res) {
+        expect(res.error).toMatch(/arquivada/);
+      }
+    });
+
+    it("rejeita forma de pagamento que não seja cartão ou conta (ex: pix ou dinheiro)", async () => {
+      const fd = new FormData();
+      const file = new File(["Data,Valor,Identificador,Descrição\n01/11/2026,-50.00,x,Mercado"], "extrato.csv", {
+        type: "text/csv",
+      });
+      fd.append("file", file);
+      fd.append("paymentMethodId", pmId);
+      fd.append("ownerMemberId", memberId);
+
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([{ id: pmId, type: "pix", archived: false }]),
+      );
+
+      const res = await uploadStatement(fd);
+      expect(res.ok).toBe(false);
+      if (!res.ok && "error" in res) {
+        expect(res.error).toMatch(/cartão ou conta/);
       }
     });
 
@@ -222,7 +282,9 @@ describe("importar actions", () => {
       fd.append("ownerMemberId", "familia");
 
       // 1. paymentMethods
-      mockDb.select.mockReturnValueOnce(createDbChain([{ id: pmId }]));
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([{ id: pmId, type: "cartao", archived: false }]),
+      );
       // 2. rules
       mockDb.select.mockReturnValueOnce(createDbChain([]));
       // 3. family members
@@ -250,7 +312,9 @@ describe("importar actions", () => {
       fd.append("ownerMemberId", memberId);
 
       // paymentMethod existe
-      mockDb.select.mockReturnValueOnce(createDbChain([{ id: pmId }]));
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([{ id: pmId, type: "conta", archived: false }]),
+      );
 
       const res = await uploadStatement(fd);
       expect(res.ok).toBe(false);
@@ -270,7 +334,9 @@ describe("importar actions", () => {
       fd.append("ownerMemberId", memberId);
 
       // 1. paymentMethod existe
-      mockDb.select.mockReturnValueOnce(createDbChain([{ id: pmId }]));
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([{ id: pmId, type: "cartao", archived: false }]),
+      );
       // 2. regras existentes
       mockDb.select.mockReturnValueOnce(createDbChain([]));
       // 3. membros da família
@@ -306,7 +372,9 @@ describe("importar actions", () => {
         fd.append("paymentMethodId", pmId);
         fd.append("ownerMemberId", memberId);
 
-        mockDb.select.mockReturnValueOnce(createDbChain([{ id: pmId }]));
+        mockDb.select.mockReturnValueOnce(
+          createDbChain([{ id: pmId, type: "cartao", archived: false }]),
+        );
         mockDb.select.mockReturnValueOnce(createDbChain([]));
         mockDb.select.mockReturnValueOnce(createDbChain([{ id: memberId, displayName: "Membro 1" }]));
         mockDb.select.mockReturnValueOnce(createDbChain([]));
@@ -343,7 +411,9 @@ describe("importar actions", () => {
       fd.append("ownerMemberId", memberId);
 
       // 1. paymentMethod existe
-      mockDb.select.mockReturnValueOnce(createDbChain([{ id: pmId }]));
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([{ id: pmId, type: "cartao", archived: false }]),
+      );
       // 2. regras existentes
       mockDb.select.mockReturnValueOnce(createDbChain([]));
       // 3. membros da família
@@ -410,7 +480,9 @@ describe("importar actions", () => {
       // Despesa manual com vencimento em outubro mas paga no dia 01/11/2026 às 15:00 UTC (12:00 Araguaina)
       const paidAtDate = new Date("2026-11-01T15:00:00Z");
 
-      mockDb.select.mockReturnValueOnce(createDbChain([{ id: pmId }]));
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([{ id: pmId, type: "cartao", archived: false }]),
+      );
       mockDb.select.mockReturnValueOnce(createDbChain([]));
       mockDb.select.mockReturnValueOnce(createDbChain([{ id: memberId, displayName: "Membro 1" }]));
       mockDb.select.mockReturnValueOnce(createDbChain([]));
@@ -456,6 +528,78 @@ describe("importar actions", () => {
       expect(insertedRowsPayload).toBeDefined();
       expect(insertedRowsPayload?.[0]?.situation).toBe("duplicada");
       expect(insertedRowsPayload?.[0]?.selected).toBe(false);
+      expect(insertedRowsPayload?.[0]?.matchedExpenseId).toBe(manualExpenseId);
+    });
+
+    it("concilia com despesa manual pendente calculando cardInvoice.dueDate quando lote é cartão com fechamento/vencimento", async () => {
+      const cardPmId = "card-pm-concilia";
+      const manualExpenseId = "exp-manual-pendente-123";
+
+      const cardCsv = "Data,Valor,Identificador,Descrição\n10/05/2026,-150.00,id-card-1,Eletrônicos";
+      const fd = new FormData();
+      const file = new File([cardCsv], "fatura.csv", { type: "text/csv" });
+      fd.append("file", file);
+      fd.append("paymentMethodId", cardPmId);
+      fd.append("ownerMemberId", memberId);
+
+      // 1. paymentMethods: cartão fecha 5, vence 15
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([
+          {
+            id: cardPmId,
+            type: "cartao",
+            closingDay: 5,
+            dueDay: 15,
+            archived: false,
+          },
+        ]),
+      );
+      // 2. regras
+      mockDb.select.mockReturnValueOnce(createDbChain([]));
+      // 3. membros da família
+      mockDb.select.mockReturnValueOnce(createDbChain([{ id: memberId, displayName: "Membro 1" }]));
+      // 4. fingerprints existentes
+      mockDb.select.mockReturnValueOnce(createDbChain([]));
+      // 5. despesas pendentes: despesa manual pendente com vencimento 2026-06-15 e mês 2026-06-01
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([
+          {
+            id: manualExpenseId,
+            amountCents: 15000,
+            dueDate: "2026-06-15",
+            month: "2026-06-01",
+          },
+        ]),
+      );
+      // 6. despesas candidatas do mesmo dia (vazio)
+      mockDb.select.mockReturnValueOnce(createDbChain([]));
+
+      let insertedRowsPayload:
+        | Array<{
+            situation: string;
+            matchedExpenseId: string | null;
+          }>
+        | undefined;
+
+      mockDb.insert.mockImplementation(() => {
+        const chain = createDbChain([{ id: batchId, lineNo: 1 }]);
+        const origValues = chain.values as (val: unknown) => unknown;
+        chain.values = vi.fn((val: unknown) => {
+          if (Array.isArray(val) && val.length > 0 && typeof val[0] === "object" && val[0] !== null && "situation" in val[0]) {
+            insertedRowsPayload = val as Array<{
+              situation: string;
+              matchedExpenseId: string | null;
+            }>;
+          }
+          return origValues(val);
+        });
+        return chain;
+      });
+
+      const res = await uploadStatement(fd);
+      expect(res.ok).toBe(true);
+      expect(insertedRowsPayload).toBeDefined();
+      expect(insertedRowsPayload?.[0]?.situation).toBe("possivel_vinculo");
       expect(insertedRowsPayload?.[0]?.matchedExpenseId).toBe(manualExpenseId);
     });
   });
@@ -750,6 +894,9 @@ describe("importar actions", () => {
           },
         ]),
       );
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([{ id: pmId, type: "conta", archived: false }]),
+      );
 
       const res = await confirmBatch(batchId);
       expect(res.ok).toBe(false);
@@ -779,11 +926,83 @@ describe("importar actions", () => {
           },
         ]),
       );
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([{ id: pmId, type: "conta", archived: false }]),
+      );
 
       const res = await confirmBatch(batchId);
       expect(res.ok).toBe(false);
       if (!res.ok) {
         expect(res.error).toMatch(/Receitas e salários devem ser atribuídos a um membro/);
+      }
+    });
+
+    it("bloqueia confirmação se a forma de pagamento do lote não for encontrada na família", async () => {
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([
+          {
+            id: batchId,
+            paymentMethodId: pmId,
+            status: "rascunho",
+          },
+        ]),
+      );
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([
+          {
+            id: rowId1,
+            type: "despesa",
+            categoryId,
+            date: "2026-11-05",
+            amountCents: -5000,
+          },
+        ]),
+      );
+      // Forma não encontrada
+      mockDb.select.mockReturnValueOnce(createDbChain([]));
+
+      const res = await confirmBatch(batchId);
+      expect(res.ok).toBe(false);
+      if (!res.ok) {
+        expect(res.error).toMatch(/Forma de pagamento não encontrada/);
+      }
+    });
+
+    it("bloqueia confirmação se a forma de pagamento do lote tiver sido arquivada", async () => {
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([
+          {
+            id: batchId,
+            paymentMethodId: pmId,
+            status: "rascunho",
+          },
+        ]),
+      );
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([
+          {
+            id: rowId1,
+            type: "despesa",
+            categoryId,
+            date: "2026-11-05",
+            amountCents: -5000,
+          },
+        ]),
+      );
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([
+          {
+            id: pmId,
+            type: "cartao",
+            archived: true,
+          },
+        ]),
+      );
+
+      const res = await confirmBatch(batchId);
+      expect(res.ok).toBe(false);
+      if (!res.ok) {
+        expect(res.error).toMatch(/arquivada/);
       }
     });
 
@@ -807,6 +1026,8 @@ describe("importar actions", () => {
           },
         ]),
       );
+      // batchPaymentMethod
+      mockDb.select.mockReturnValueOnce(createDbChain([{ id: pmId, type: "conta" }]));
 
       vi.mocked(assertMonthOpen).mockRejectedValueOnce(
         new Error("O mês 2026-10 está fechado para edição."),
@@ -860,6 +1081,8 @@ describe("importar actions", () => {
       ];
 
       mockDb.select.mockReturnValueOnce(createDbChain(rowsToConfirm));
+      // batchPaymentMethod
+      mockDb.select.mockReturnValueOnce(createDbChain([{ id: pmId, type: "conta" }]));
 
       // Dentro da transação:
       // 1. insert despesa
@@ -875,6 +1098,103 @@ describe("importar actions", () => {
         expect(res.batchId).toBe(batchId);
       }
       expect(mockDb.transaction).toHaveBeenCalled();
+    });
+
+    it("aplica regra de fatura (cardInvoice) ao confirmar importação com cartão que possui fechamento e vencimento", async () => {
+      const cardPmId = "card-pm-123";
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([
+          {
+            id: batchId,
+            paymentMethodId: cardPmId,
+            status: "rascunho",
+          },
+        ]),
+      );
+
+      const rowsToConfirm = [
+        // Compra no dia 10/05 (fecha dia 5, vence 15 -> fatura de junho: ref 2026-06-01, due 2026-06-15)
+        {
+          id: rowId1,
+          date: "2026-05-10",
+          descriptionOriginal: "Restaurante",
+          amountCents: -12000,
+          type: "despesa",
+          categoryId,
+          ownerMemberId: memberId,
+          paymentMethodId: cardPmId,
+          linkedExpenseId: null,
+          fingerprint: "fp-card-1",
+        },
+        // Compra no dia 03/05 (fecha dia 5, vence 15 -> fatura de maio: ref 2026-05-01, due 2026-05-15)
+        {
+          id: rowId2,
+          date: "2026-05-03",
+          descriptionOriginal: "Café",
+          amountCents: -1500,
+          type: "despesa",
+          categoryId,
+          ownerMemberId: memberId,
+          paymentMethodId: cardPmId,
+          linkedExpenseId: null,
+          fingerprint: "fp-card-2",
+        },
+      ];
+
+      // 1. selectedRows
+      mockDb.select.mockReturnValueOnce(createDbChain(rowsToConfirm));
+      // 2. batchPaymentMethod (cartão com fechamento 5 e vencimento 15)
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([
+          {
+            id: cardPmId,
+            type: "cartao",
+            closingDay: 5,
+            dueDay: 15,
+            archived: false,
+          },
+        ]),
+      );
+
+      const insertedExpenses: Array<Record<string, unknown>> = [];
+      mockDb.insert.mockImplementation(() => {
+        const chain = createDbChain([{ id: "new-exp-id" }]);
+        chain.values = vi.fn((val: unknown) => {
+          if (typeof val === "object" && val !== null) {
+            insertedExpenses.push(val as Record<string, unknown>);
+          }
+          return chain;
+        });
+        return chain;
+      });
+
+      const res = await confirmBatch(batchId);
+      expect(res.ok).toBe(true);
+
+      // Confirma que foram criadas 2 despesas com a regra de fatura aplicada
+      expect(insertedExpenses).toHaveLength(2);
+
+      // Primeira despesa (compra 10/05): referenceMonth 2026-06-01, dueDate 2026-06-15, paymentMethodId = batch.paymentMethodId
+      expect(insertedExpenses[0]).toMatchObject({
+        referenceMonth: "2026-06-01",
+        dueDate: "2026-06-15",
+        paymentMethodId: cardPmId,
+        amountCents: 12000,
+        status: "pago",
+      });
+
+      // Segunda despesa (compra 03/05): referenceMonth 2026-05-01, dueDate 2026-05-15, paymentMethodId = batch.paymentMethodId
+      expect(insertedExpenses[1]).toMatchObject({
+        referenceMonth: "2026-05-01",
+        dueDate: "2026-05-15",
+        paymentMethodId: cardPmId,
+        amountCents: 1500,
+        status: "pago",
+      });
+
+      // Meses checados com assertMonthOpen devem ser 2026-06 e 2026-05
+      expect(assertMonthOpen).toHaveBeenCalledWith(famId, "2026-06");
+      expect(assertMonthOpen).toHaveBeenCalledWith(famId, "2026-05");
     });
   });
 
@@ -931,8 +1251,14 @@ describe("importar actions", () => {
           {
             id: rowId1,
             date: "2026-10-10",
+            linkedExpenseId: null,
           },
         ]),
+      );
+
+      // createdExpenses
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([{ referenceMonth: "2026-10-01" }]),
       );
 
       vi.mocked(assertMonthOpen).mockRejectedValueOnce(
@@ -944,6 +1270,106 @@ describe("importar actions", () => {
       if (!res.ok) {
         expect(res.error).toMatch(/fechado para edição/);
       }
+    });
+
+    it("bloqueia desfazer quando a fatura de cartão de crédito cai num mês fechado", async () => {
+      const cardPmId = "card-pm-closing-test";
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([
+          {
+            id: batchId,
+            importedBy: memberId,
+            paymentMethodId: cardPmId,
+            status: "confirmado",
+          },
+        ]),
+      );
+
+      // Compra feita em 10/05 (maio), mas cuja despesa gravada tem referenceMonth de junho (2026-06-01)
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([
+          {
+            id: rowId1,
+            type: "despesa",
+            date: "2026-05-10",
+            linkedExpenseId: null,
+          },
+        ]),
+      );
+
+      // createdExpenses gravadas no banco com o referenceMonth da fatura
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([
+          {
+            referenceMonth: "2026-06-01",
+          },
+        ]),
+      );
+
+      // Mês da fatura (2026-06) está fechado
+      vi.mocked(assertMonthOpen).mockImplementation(async (_famId, monthKey) => {
+        if (monthKey === "2026-06") {
+          throw new Error("O mês 2026-06 está fechado para edição.");
+        }
+      });
+
+      const res = await undoBatch(batchId);
+      expect(res.ok).toBe(false);
+      if (!res.ok) {
+        expect(res.error).toMatch(/2026-06 está fechado/);
+      }
+      expect(assertMonthOpen).toHaveBeenCalledWith(famId, "2026-06");
+    });
+
+    it("bloqueia desfazer quando o dia de fechamento do cartão é alterado após importação mas o mês gravado está fechado (não recalcula fatura)", async () => {
+      // Simula um lote cujo cartão sofreu alteração no dia de fechamento após a importação.
+      // O desfazer deve respeitar estritamente o referenceMonth gravado no banco nas despesas,
+      // sem consultar a forma de pagamento nem recalcular cardInvoice.
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([
+          {
+            id: batchId,
+            importedBy: memberId,
+            paymentMethodId: "card-pm-changed",
+            status: "confirmado",
+          },
+        ]),
+      );
+
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([
+          {
+            id: rowId1,
+            type: "despesa",
+            date: "2026-05-28", // se recalculasse com fechamento dia 25 viraria junho, se dia 30 viraria maio
+            linkedExpenseId: null,
+          },
+        ]),
+      );
+
+      // Despesa gravada na época da importação com referenceMonth de junho (2026-06-01)
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([
+          {
+            referenceMonth: "2026-06-01",
+          },
+        ]),
+      );
+
+      vi.mocked(assertMonthOpen).mockImplementation(async (_famId, monthKey) => {
+        if (monthKey === "2026-06") {
+          throw new Error("O mês 2026-06 está fechado para edição.");
+        }
+      });
+
+      const res = await undoBatch(batchId);
+      expect(res.ok).toBe(false);
+      if (!res.ok) {
+        expect(res.error).toMatch(/2026-06 está fechado para edição/);
+      }
+      // Garante que validou pelo mês gravado (2026-06), sem recalcular pela data da compra (2026-05)
+      expect(assertMonthOpen).toHaveBeenCalledWith(famId, "2026-06");
+      expect(assertMonthOpen).not.toHaveBeenCalledWith(famId, "2026-05");
     });
 
     it("desfaz lote com sucesso: exclusão lógica de despesas e reversão de receitas", async () => {
@@ -977,6 +1403,15 @@ describe("importar actions", () => {
             previousSalaryCents: null,
           },
         ]),
+      );
+
+      // createdExpenses
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([{ referenceMonth: "2026-11-01" }]),
+      );
+      // linkedExpenses (para expenseId)
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([{ referenceMonth: "2026-11-01" }]),
       );
 
       // select currentInc na reversão
