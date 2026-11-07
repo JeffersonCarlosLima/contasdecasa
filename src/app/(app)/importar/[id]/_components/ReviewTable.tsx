@@ -100,6 +100,10 @@ export function ReviewTable({
                     ? "var(--surface-raised)"
                     : "var(--surface-sunken)",
                   opacity: isIgnored ? 0.65 : 1,
+                  boxShadow:
+                    isMissingCategory || isMissingOwner
+                      ? "inset 3px 0 0 var(--danger)"
+                      : undefined,
                 }}
               >
                 {/* 1. Checkbox */}
@@ -181,6 +185,7 @@ export function ReviewTable({
                   {isExpense ? (
                     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                       <select
+                        id={`table-cat-select-${row.id}`}
                         className={`cc-select ${isMissingCategory ? "cc-input--error" : ""}`}
                         style={{
                           height: 38,
@@ -193,6 +198,10 @@ export function ReviewTable({
                         }
                         disabled={isPending}
                         aria-label={`Categoria para ${row.descriptionOriginal}`}
+                        aria-invalid={isMissingCategory ? true : undefined}
+                        aria-describedby={
+                          isMissingCategory ? `table-cat-err-${row.id}` : undefined
+                        }
                       >
                         <option value="" disabled={Boolean(row.categoryId)}>
                           {row.categoryId ? "Sem categoria" : "Selecione a categoria *"}
@@ -205,7 +214,12 @@ export function ReviewTable({
                       </select>
 
                       {isMissingCategory && (
-                        <span className="caption" style={{ color: "var(--danger)" }} role="alert">
+                        <span
+                          id={`table-cat-err-${row.id}`}
+                          className="caption"
+                          style={{ color: "var(--danger)" }}
+                          role="alert"
+                        >
                           Categoria obrigatória
                         </span>
                       )}
@@ -238,6 +252,7 @@ export function ReviewTable({
                 <td>
                   <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                     <select
+                      id={`table-owner-select-${row.id}`}
                       className={`cc-select ${isMissingOwner ? "cc-input--error" : ""}`}
                       style={{
                         height: 38,
@@ -250,6 +265,10 @@ export function ReviewTable({
                       }
                       disabled={isPending || isIgnored}
                       aria-label={`Responsável por ${row.descriptionOriginal}`}
+                      aria-invalid={isMissingOwner ? true : undefined}
+                      aria-describedby={
+                        isMissingOwner ? `table-owner-err-${row.id}` : undefined
+                      }
                     >
                       <option value="" disabled={isIncome}>
                         {isIncome ? "Selecione o membro *" : "Família (dividir)"}
@@ -262,7 +281,12 @@ export function ReviewTable({
                     </select>
 
                     {isMissingOwner && (
-                      <span className="caption" style={{ color: "var(--danger)" }} role="alert">
+                      <span
+                        id={`table-owner-err-${row.id}`}
+                        className="caption"
+                        style={{ color: "var(--danger)" }}
+                        role="alert"
+                      >
                         Membro obrigatório
                       </span>
                     )}

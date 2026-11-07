@@ -7,7 +7,13 @@ import { listFamily } from "@/lib/family-queries";
 import { isMonthClosed } from "@/lib/period";
 import { requireMember } from "@/lib/session";
 import { formatBRL } from "@/lib/money";
-import { ExpenseListView, formatSplitNames, type ViewMode } from "./_list";
+import {
+  ExpenseListView,
+  ImportBatchBanner,
+  formatSplitNames,
+  getBatchSummaryForPage,
+  type ViewMode,
+} from "./_list";
 
 interface DespesasPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -25,19 +31,22 @@ export default async function DespesasPage({ searchParams }: DespesasPageProps) 
       : null;
   const categoryParam = typeof sp.tipo === "string" ? sp.tipo : null;
   const memberParam = typeof sp.membro === "string" ? sp.membro : null;
+  const loteParam = typeof sp.lote === "string" ? sp.lote : undefined;
 
   const { familyId } = await requireMember();
 
-  const [expenseData, categories, familyData, closed] = await Promise.all([
-    listExpenses(familyId, month, {
-      categoryId: categoryParam,
-      memberId: memberParam,
-      status: statusParam,
-    }),
-    listCategories(familyId),
-    listFamily(familyId),
-    isMonthClosed(familyId, month),
-  ]);
+  const [expenseData, categories, familyData, closed, batchSummary] =
+    await Promise.all([
+      listExpenses(familyId, month, {
+        categoryId: categoryParam,
+        memberId: memberParam,
+        status: statusParam,
+      }),
+      listCategories(familyId),
+      listFamily(familyId),
+      isMonthClosed(familyId, month),
+      getBatchSummaryForPage(familyId, loteParam, month),
+    ]);
 
   const activeMembers = familyData.members.filter(
     (m) => m.status !== "removido"
@@ -50,6 +59,8 @@ export default async function DespesasPage({ searchParams }: DespesasPageProps) 
   return (
     <main className="cc-main">
       <div className="cc-wrap">
+        {batchSummary && <ImportBatchBanner summary={batchSummary} />}
+
         <div className="cc-top">
           <div className="cc-top__titles">
             <h1 className="heading cc-hide-sm">Despesas da família</h1>

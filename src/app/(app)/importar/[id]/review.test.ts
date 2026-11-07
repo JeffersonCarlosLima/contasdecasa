@@ -3,6 +3,7 @@ import {
   computeReviewTotals,
   filterReviewRows,
   formatSignedAmount,
+  getDisabledProceedReason,
   getSituationLabel,
 } from "./_components/helpers";
 import type { ImportRowReviewItem } from "./_components/types";
@@ -160,5 +161,80 @@ describe("getSituationLabel", () => {
     expect(getSituationLabel("nova")).toEqual({ label: "Nova", badge: "paid" });
     expect(getSituationLabel("duplicada")).toEqual({ label: "Duplicada", badge: "late" });
     expect(getSituationLabel("possivel_vinculo")).toEqual({ label: "Possível vínculo", badge: "pending" });
+  });
+});
+
+describe("getDisabledProceedReason", () => {
+  it("retorna null quando canProceedToConfirm for true", () => {
+    const res = getDisabledProceedReason({
+      canProceedToConfirm: true,
+      selectedCount: 5,
+      missingCategoryCount: 0,
+      missingOwnerCount: 0,
+    });
+    expect(res).toBeNull();
+  });
+
+  it("retorna mensagem quando nenhum lançamento estiver selecionado", () => {
+    const res = getDisabledProceedReason({
+      canProceedToConfirm: false,
+      selectedCount: 0,
+      missingCategoryCount: 0,
+      missingOwnerCount: 0,
+    });
+    expect(res).toBe("Selecione ao menos um lançamento para continuar.");
+  });
+
+  it("conta despesas pendentes no singular e plural", () => {
+    expect(
+      getDisabledProceedReason({
+        canProceedToConfirm: false,
+        selectedCount: 1,
+        missingCategoryCount: 1,
+        missingOwnerCount: 0,
+      })
+    ).toBe("Defina a categoria de 1 despesa para continuar.");
+
+    expect(
+      getDisabledProceedReason({
+        canProceedToConfirm: false,
+        selectedCount: 3,
+        missingCategoryCount: 2,
+        missingOwnerCount: 0,
+      })
+    ).toBe("Defina a categoria de 2 despesas para continuar.");
+  });
+
+  it("conta receitas pendentes no singular e plural", () => {
+    expect(
+      getDisabledProceedReason({
+        canProceedToConfirm: false,
+        selectedCount: 1,
+        missingCategoryCount: 0,
+        missingOwnerCount: 1,
+      })
+    ).toBe("Defina o responsável de 1 receita para continuar.");
+
+    expect(
+      getDisabledProceedReason({
+        canProceedToConfirm: false,
+        selectedCount: 3,
+        missingCategoryCount: 0,
+        missingOwnerCount: 2,
+      })
+    ).toBe("Defina o responsável de 2 receitas para continuar.");
+  });
+
+  it("combina despesas e receitas pendentes", () => {
+    expect(
+      getDisabledProceedReason({
+        canProceedToConfirm: false,
+        selectedCount: 5,
+        missingCategoryCount: 2,
+        missingOwnerCount: 1,
+      })
+    ).toBe(
+      "Defina a categoria de 2 despesas e o responsável de 1 receita para continuar."
+    );
   });
 });

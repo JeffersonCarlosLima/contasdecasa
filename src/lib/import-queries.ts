@@ -1,8 +1,10 @@
 import "server-only";
 
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/db";
+import { currentMonth } from "@/lib/dates";
+import { toMonthKey } from "@/lib/period";
 import {
   categories,
   expenses,
@@ -414,3 +416,114 @@ export async function listMappings(familyId: string): Promise<ImportMappingItem[
     createdAt: r.createdAt,
   }));
 }
+
+export interface BatchSummary {
+  batchId: string;
+  expensesByMonth: { month: string; count: number }[];
+  linkedCount: number;
+  incomesCount: number;
+  incomeMonths: string[];
+}
+
+/**
+ * Resumo do lote importado para avisos pós-confirmação e redirecionamento.
+ * Sempre filtra por family_id e ignora despesas excluídas logicamente (deleted_at).
+ */
+export async function getBatchSummary(
+  familyId: string,
+  batchId: string,
+): Promise<BatchSummary> {
+  const createdExpenses = await db
+    .select({ referenceMonth: expenses.referenceMonth })
+    .from(expenses)
+    .where(
+      and(
+        eq(expenses.familyId, familyId),
+        eq(expenses.importBatchId, batchId),
+        isNull(expenses.deletedAt),
+      ),
+    );
+
+  const monthCounts = new Map<string, number>();
+  for (const exp of createdExpenses) {
+    const m = toMonthKey(exp.referenceMonth);
+    monthCounts.set(m, (monthCounts.get(m) ?? 0) + 1);
+  }
+
+  const expensesByMonth = Array.from(monthCounts.entries())
+    .map(([month, count]) => ({ month, count }))
+    .sort((a, b) => a.month.localeCompare(b.month));
+
+  const rows = await db
+    .select({
+      id: importRows.id,
+      date: importRows.date,
+      type: importRows.type,
+      selected: importRows.selected,
+      linkedExpenseId: importRows.linkedExpenseId,
+      createdExpenseId: importRows.createdExpenseId,
+      targetMemberIncomeId: importRows.targetMemberIncomeId,
+    })
+    .from(importRows)
+    .where(
+      and(
+        eq(importRows.familyId, familyId),
+        eq(importRows.batchId, batchId),
+      ),
+    )
+    .orderBy(importRows.lineNo);
+
+  let linkedCount = 0;
+  let incomesCount = 0;
+  const incomeMonthsSet = new Set<string>();
+
+  for (const r of rows) {
+    if (r.linkedExpenseId && (r.createdExpenseId || r.selected)) {
+      linkedCount += 1;
+    }
+    if (
+      (r.type === "receita" || r.type === "salario") &&
+      (r.targetMemberIncomeId || r.selected)
+    ) {
+      incomesCount += 1;
+      incomeMonthsSet.add(r.date.slice(0, 7));
+    }
+  }
+
+  const incomeMonths = Array.from(incomeMonthsSet);
+
+  return {
+    batchId,
+    expensesByMonth,
+    linkedCount,
+    incomesCount,
+    incomeMonths,
+  };
+}
+
+/**
+ * Calcula o mês alvo (YYYY-MM) após confirmar a importação:
+ * 1. O mês com mais despesas criadas (empate: o mais antigo)
+ * 2. Sem despesas criadas: mês da primeira receita
+ * 3. Fallback: mês corrente
+ */
+export function computeTargetMonth(summary: BatchSummary): string {
+  if (summary.expensesByMonth.length > 0) {
+    const sorted = [...summary.expensesByMonth].sort((a, b) => {
+      if (b.count !== a.count) {
+        return b.count - a.count;
+      }
+      return a.month.localeCompare(b.month);
+    });
+    const top = sorted[0];
+    if (top) {
+      return top.month;
+    }
+  }
+  const firstIncome = summary.incomeMonths[0];
+  if (firstIncome) {
+    return firstIncome;
+  }
+  return currentMonth();
+}
+

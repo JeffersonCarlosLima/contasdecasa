@@ -66,6 +66,7 @@ export function ReviewMobileCards({
                 : "var(--surface-sunken)",
               opacity: row.type === "ignorar" ? 0.65 : 1,
               border: isMissingCategory || isMissingOwner ? "1px solid var(--danger)" : undefined,
+              boxShadow: isMissingCategory || isMissingOwner ? "inset 3px 0 0 var(--danger)" : undefined,
             }}
           >
             {/* Top row: Checkbox, Date & Value */}
@@ -118,7 +119,7 @@ export function ReviewMobileCards({
 
               <select
                 className="cc-select"
-                style={{ height: 36, fontSize: 13, flex: 1 }}
+                style={{ height: 40, fontSize: 13, flex: 1 }}
                 value={row.type}
                 onChange={(e) =>
                   onUpdateRowType(
@@ -140,15 +141,28 @@ export function ReviewMobileCards({
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
               {isExpense && (
                 <div>
-                  <label className="caption cc-muted" style={{ display: "block", marginBottom: 2 }}>
+                  <label
+                    htmlFor={`m-cat-select-${row.id}`}
+                    className="caption cc-muted"
+                    style={{ display: "block", marginBottom: 2 }}
+                  >
                     Categoria {isMissingCategory && <span style={{ color: "var(--danger)" }}>* obrigatória</span>}
                   </label>
                   <select
+                    id={`m-cat-select-${row.id}`}
                     className={`cc-select ${isMissingCategory ? "cc-input--error" : ""}`}
-                    style={{ height: 40, width: "100%", fontSize: 13 }}
+                    style={{
+                      height: 40,
+                      width: "100%",
+                      fontSize: 13,
+                      borderColor: isMissingCategory ? "var(--danger)" : undefined,
+                    }}
                     value={row.categoryId ?? ""}
                     onChange={(e) => onUpdateRowCategory(row.id, e.target.value || null)}
                     disabled={isPending}
+                    aria-label={`Categoria de ${row.descriptionOriginal}`}
+                    aria-invalid={isMissingCategory ? true : undefined}
+                    aria-describedby={isMissingCategory ? `m-cat-err-${row.id}` : undefined}
                   >
                     <option value="" disabled={Boolean(row.categoryId)}>
                       {row.categoryId ? "Sem categoria" : "Selecione a categoria *"}
@@ -160,6 +174,17 @@ export function ReviewMobileCards({
                     ))}
                   </select>
 
+                  {isMissingCategory && (
+                    <span
+                      id={`m-cat-err-${row.id}`}
+                      className="caption"
+                      style={{ color: "var(--danger)", display: "block", marginTop: 4 }}
+                      role="alert"
+                    >
+                      Categoria obrigatória
+                    </span>
+                  )}
+
                   {row.categoryId && (
                     <button
                       type="button"
@@ -167,7 +192,10 @@ export function ReviewMobileCards({
                       style={{
                         background: "transparent",
                         border: 0,
-                        padding: "4px 0",
+                        padding: "8px 0",
+                        minHeight: "40px",
+                        display: "inline-flex",
+                        alignItems: "center",
                         cursor: "pointer",
                         textDecoration: "underline",
                         color: "var(--brand-ink)",
@@ -181,15 +209,28 @@ export function ReviewMobileCards({
               )}
 
               <div>
-                <label className="caption cc-muted" style={{ display: "block", marginBottom: 2 }}>
+                <label
+                  htmlFor={`m-owner-select-${row.id}`}
+                  className="caption cc-muted"
+                  style={{ display: "block", marginBottom: 2 }}
+                >
                   Dono {isMissingOwner && <span style={{ color: "var(--danger)" }}>* obrigatório</span>}
                 </label>
                 <select
+                  id={`m-owner-select-${row.id}`}
                   className={`cc-select ${isMissingOwner ? "cc-input--error" : ""}`}
-                  style={{ height: 40, width: "100%", fontSize: 13 }}
+                  style={{
+                    height: 40,
+                    width: "100%",
+                    fontSize: 13,
+                    borderColor: isMissingOwner ? "var(--danger)" : undefined,
+                  }}
                   value={row.ownerMemberId ?? ""}
                   onChange={(e) => onUpdateRowOwner(row.id, e.target.value || null)}
                   disabled={isPending || row.type === "ignorar"}
+                  aria-label={`Responsável por ${row.descriptionOriginal}`}
+                  aria-invalid={isMissingOwner ? true : undefined}
+                  aria-describedby={isMissingOwner ? `m-owner-err-${row.id}` : undefined}
                 >
                   <option value="" disabled={isIncome}>
                     {isIncome ? "Selecione o membro *" : "Família (dividir)"}
@@ -200,6 +241,17 @@ export function ReviewMobileCards({
                     </option>
                   ))}
                 </select>
+
+                {isMissingOwner && (
+                  <span
+                    id={`m-owner-err-${row.id}`}
+                    className="caption"
+                    style={{ color: "var(--danger)", display: "block", marginTop: 4 }}
+                    role="alert"
+                  >
+                    Membro obrigatório
+                  </span>
+                )}
               </div>
             </div>
 
@@ -229,7 +281,7 @@ export function ReviewMobileCards({
                     <button
                       type="button"
                       className="cc-btn cc-btn--ghost cc-btn--sm"
-                      style={{ minHeight: "38px" }}
+                      style={{ minHeight: "40px" }}
                       onClick={() => onLinkExpense(row.id, row.matchedExpense!.id)}
                       disabled={isPending}
                     >
@@ -239,7 +291,7 @@ export function ReviewMobileCards({
                   <button
                     type="button"
                     className="cc-btn cc-btn--ghost cc-btn--sm"
-                    style={{ minHeight: "38px" }}
+                    style={{ minHeight: "40px" }}
                     onClick={() => onLinkExpense(row.id, null)}
                     disabled={isPending || row.linkedExpenseId === null}
                   >
@@ -266,7 +318,7 @@ export function ReviewMobileCards({
                 <button
                   type="button"
                   className="cc-btn cc-btn--ghost cc-btn--sm"
-                  style={{ minHeight: "38px" }}
+                  style={{ minHeight: "40px" }}
                   onClick={() => onClearTransfer(row.id)}
                   disabled={isPending}
                 >

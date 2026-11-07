@@ -11,6 +11,7 @@ vi.mock("@/db", () => ({
 import { db } from "@/db";
 import {
   getBatchReview,
+  getBatchSummary,
   listBatches,
   listMappings,
   listRules,
@@ -305,6 +306,104 @@ describe("import-queries", () => {
       const result = await listMappings("fam_1");
       expect(result).toHaveLength(1);
       expect(result[0]!.name).toBe("Banco X");
+    });
+  });
+
+  describe("getBatchSummary", () => {
+    it("retorna resumo com despesas agrupadas por mês, despesas vinculadas e receitas", async () => {
+      const mockCreatedExpenses = [
+        { referenceMonth: "2026-11-01" },
+        { referenceMonth: "2026-11-01" },
+        { referenceMonth: "2026-10-01" },
+      ];
+
+      const mockRows = [
+        {
+          id: "r1",
+          date: "2026-11-05",
+          type: "despesa" as const,
+          selected: true,
+          linkedExpenseId: "exp-linked-1",
+          createdExpenseId: "exp-linked-1",
+          targetMemberIncomeId: null,
+        },
+        {
+          id: "r2",
+          date: "2026-11-10",
+          type: "receita" as const,
+          selected: true,
+          linkedExpenseId: null,
+          createdExpenseId: null,
+          targetMemberIncomeId: "inc-1",
+        },
+        {
+          id: "r3",
+          date: "2026-10-20",
+          type: "salario" as const,
+          selected: true,
+          linkedExpenseId: null,
+          createdExpenseId: null,
+          targetMemberIncomeId: "inc-2",
+        },
+        {
+          id: "r4",
+          date: "2026-11-12",
+          type: "despesa" as const,
+          selected: true,
+          linkedExpenseId: null,
+          createdExpenseId: "exp-new-1",
+          targetMemberIncomeId: null,
+        },
+      ];
+
+      // 1. select createdExpenses
+      vi.mocked(db.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue(mockCreatedExpenses),
+        }),
+      } as unknown as ReturnType<typeof db.select>);
+
+      // 2. select importRows
+      vi.mocked(db.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            orderBy: vi.fn().mockResolvedValue(mockRows),
+          }),
+        }),
+      } as unknown as ReturnType<typeof db.select>);
+
+      const summary = await getBatchSummary("fam_1", "b_test");
+      expect(summary.batchId).toBe("b_test");
+      expect(summary.expensesByMonth).toEqual([
+        { month: "2026-10", count: 1 },
+        { month: "2026-11", count: 2 },
+      ]);
+      expect(summary.linkedCount).toBe(1);
+      expect(summary.incomesCount).toBe(2);
+      expect(summary.incomeMonths).toEqual(["2026-11", "2026-10"]);
+    });
+
+    it("retorna resumo vazio quando o lote não gerou despesas ou receitas", async () => {
+      vi.mocked(db.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([]),
+        }),
+      } as unknown as ReturnType<typeof db.select>);
+
+      vi.mocked(db.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            orderBy: vi.fn().mockResolvedValue([]),
+          }),
+        }),
+      } as unknown as ReturnType<typeof db.select>);
+
+      const summary = await getBatchSummary("fam_1", "b_empty");
+      expect(summary.batchId).toBe("b_empty");
+      expect(summary.expensesByMonth).toEqual([]);
+      expect(summary.linkedCount).toBe(0);
+      expect(summary.incomesCount).toBe(0);
+      expect(summary.incomeMonths).toEqual([]);
     });
   });
 });

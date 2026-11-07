@@ -25,3 +25,26 @@ export function formatInstallmentText(
   }
   return "—";
 }
+
+const MONTHS_PT = [
+  "janeiro",
+  "fevereiro",
+  "março",
+  "abril",
+  "maio",
+  "junho",
+  "julho",
+  "agosto",
+  "setembro",
+  "outubro",
+  "novembro",
+  "dezembro",
+];
+
+/** "2026-11" → "novembro de 2026" */
+export function formatMonthLong(month: string): string {
+  const [y, m] = month.split("-").map(Number);
+  const name = MONTHS_PT[(m ?? 1) - 1] ?? "";
+  return `${name} de ${y}`;
+}
+

@@ -67,6 +67,8 @@ vi.mock("@/db", () => ({
 
 import { assertMonthOpen } from "@/lib/period";
 import { requireMember, requireRole } from "@/lib/session";
+import { expenses, monthlyPeriods } from "@/db/schema";
+import { computeTargetMonth } from "@/lib/import-queries";
 import {
   clearTransferSuggestion,
   confirmBatch,
@@ -1195,6 +1197,213 @@ describe("importar actions", () => {
       // Meses checados com assertMonthOpen devem ser 2026-06 e 2026-05
       expect(assertMonthOpen).toHaveBeenCalledWith(famId, "2026-06");
       expect(assertMonthOpen).toHaveBeenCalledWith(famId, "2026-05");
+    });
+
+    it("confirma lote com apenas receita e grava mês com dia 01 no período mensal (monthlyPeriods)", async () => {
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([
+          {
+            id: batchId,
+            paymentMethodId: pmId,
+            status: "rascunho",
+          },
+        ]),
+      );
+
+      const rowsToConfirm = [
+        {
+          id: rowId1,
+          date: "2026-11-06",
+          descriptionOriginal: "TED Recebida",
+          amountCents: 50000,
+          type: "receita",
+          categoryId: null,
+          ownerMemberId: memberId,
+          paymentMethodId: pmId,
+          linkedExpenseId: null,
+          fingerprint: "fp-rec-1",
+        },
+      ];
+
+      // 1. selectedRows
+      mockDb.select.mockReturnValueOnce(createDbChain(rowsToConfirm));
+      // 2. batchPaymentMethod
+      mockDb.select.mockReturnValueOnce(createDbChain([{ id: pmId, type: "conta", archived: false }]));
+
+      // Dentro da transação:
+      // 3. select monthlyPeriods -> não existe ainda
+      mockDb.select.mockReturnValueOnce(createDbChain([]));
+      // 4. select memberIncomes -> não existe ainda
+      mockDb.select.mockReturnValueOnce(createDbChain([]));
+
+      const insertedRecords: Array<{ table: unknown; values: Record<string, unknown> }> = [];
+      mockDb.insert.mockImplementation((table: unknown) => {
+        const chain = createDbChain([{ id: "generated-id", extraCents: 0, salaryCents: 0 }]);
+        chain.values = vi.fn((val: unknown) => {
+          if (typeof val === "object" && val !== null) {
+            insertedRecords.push({ table, values: val as Record<string, unknown> });
+          }
+          return chain;
+        });
+        return chain;
+      });
+
+      const res = await confirmBatch(batchId);
+      expect(res.ok).toBe(true);
+
+      // monthlyPeriods deve ter sido inserido com dia 01
+      const periodInsert = insertedRecords.find((r) => r.table === monthlyPeriods);
+      expect(periodInsert).toBeDefined();
+      expect(periodInsert?.values).toMatchObject({
+        familyId: famId,
+        month: "2026-11-01",
+      });
+    });
+
+    it("confirma lote com despesa e receita no mesmo lote gravando dia 01 em expenses e monthlyPeriods", async () => {
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([
+          {
+            id: batchId,
+            paymentMethodId: pmId,
+            status: "rascunho",
+          },
+        ]),
+      );
+
+      const rowsToConfirm = [
+        // Despesa em 2026-11-15
+        {
+          id: rowId1,
+          date: "2026-11-15",
+          descriptionOriginal: "Farmácia",
+          amountCents: -7500,
+          type: "despesa",
+          categoryId,
+          ownerMemberId: memberId,
+          paymentMethodId: pmId,
+          linkedExpenseId: null,
+          fingerprint: "fp-mix-1",
+        },
+        // Receita em 2026-11-20
+        {
+          id: rowId2,
+          date: "2026-11-20",
+          descriptionOriginal: "Freelance",
+          amountCents: 120000,
+          type: "receita",
+          categoryId: null,
+          ownerMemberId: memberId,
+          paymentMethodId: pmId,
+          linkedExpenseId: null,
+          fingerprint: "fp-mix-2",
+        },
+      ];
+
+      // 1. selectedRows
+      mockDb.select.mockReturnValueOnce(createDbChain(rowsToConfirm));
+      // 2. batchPaymentMethod
+      mockDb.select.mockReturnValueOnce(createDbChain([{ id: pmId, type: "conta", archived: false }]));
+
+      // Dentro da transação:
+      // Para a receita:
+      // select monthlyPeriods (não existe)
+      mockDb.select.mockReturnValueOnce(createDbChain([]));
+      // select memberIncomes (já existe com extraCents: 5000)
+      mockDb.select.mockReturnValueOnce(createDbChain([{ id: "inc-mix", extraCents: 5000 }]));
+
+      const insertedRecords: Array<{ table: unknown; values: Record<string, unknown> }> = [];
+      mockDb.insert.mockImplementation((table: unknown) => {
+        const chain = createDbChain([{ id: "generated-id" }]);
+        chain.values = vi.fn((val: unknown) => {
+          if (typeof val === "object" && val !== null) {
+            insertedRecords.push({ table, values: val as Record<string, unknown> });
+          }
+          return chain;
+        });
+        return chain;
+      });
+
+      const res = await confirmBatch(batchId);
+      expect(res.ok).toBe(true);
+
+      // Verifica inserção da despesa com referenceMonth = dia 01
+      const expenseInsert = insertedRecords.find((r) => r.table === expenses);
+      expect(expenseInsert).toBeDefined();
+      expect(expenseInsert?.values).toMatchObject({
+        familyId: famId,
+        referenceMonth: "2026-11-01",
+        dueDate: "2026-11-15",
+        amountCents: 7500,
+      });
+
+      // Verifica inserção do período mensal com month = dia 01
+      const periodInsert = insertedRecords.find((r) => r.table === monthlyPeriods);
+      expect(periodInsert).toBeDefined();
+      expect(periodInsert?.values).toMatchObject({
+        familyId: famId,
+        month: "2026-11-01",
+      });
+
+      // TargetMonth deve ser retornado na confirmação
+      if (res.ok) {
+        expect(res.targetMonth).toBe("2026-11");
+      }
+    });
+
+    describe("computeTargetMonth", () => {
+      it("escolhe o mês com mais despesas criadas", () => {
+        const summary = {
+          batchId: "b1",
+          expensesByMonth: [
+            { month: "2026-05", count: 2 },
+            { month: "2026-06", count: 7 },
+            { month: "2026-07", count: 3 },
+          ],
+          linkedCount: 0,
+          incomesCount: 0,
+          incomeMonths: [],
+        };
+        expect(computeTargetMonth(summary)).toBe("2026-06");
+      });
+
+      it("em caso de empate de contagem de despesas, escolhe o mês mais antigo", () => {
+        const summary = {
+          batchId: "b1",
+          expensesByMonth: [
+            { month: "2026-08", count: 4 },
+            { month: "2026-05", count: 4 },
+            { month: "2026-06", count: 2 },
+          ],
+          linkedCount: 0,
+          incomesCount: 0,
+          incomeMonths: [],
+        };
+        expect(computeTargetMonth(summary)).toBe("2026-05");
+      });
+
+      it("sem despesas criadas, escolhe o mês da primeira receita", () => {
+        const summary = {
+          batchId: "b1",
+          expensesByMonth: [],
+          linkedCount: 2,
+          incomesCount: 3,
+          incomeMonths: ["2026-10", "2026-11"],
+        };
+        expect(computeTargetMonth(summary)).toBe("2026-10");
+      });
+
+      it("sem despesas e sem receitas, retorna o mês corrente", () => {
+        const summary = {
+          batchId: "b1",
+          expensesByMonth: [],
+          linkedCount: 0,
+          incomesCount: 0,
+          incomeMonths: [],
+        };
+        const res = computeTargetMonth(summary);
+        expect(res).toMatch(/^\d{4}-(?:0[1-9]|1[0-2])$/);
+      });
     });
   });
 

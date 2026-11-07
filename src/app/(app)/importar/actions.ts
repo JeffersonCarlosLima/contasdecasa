@@ -26,6 +26,7 @@ import {
   type SameDayExpenseCandidate,
   type TransferRowCandidate,
 } from "@/lib/import";
+import { computeTargetMonth, getBatchSummary } from "@/lib/import-queries";
 import { assertMonthOpen, toMonthDate, toMonthKey } from "@/lib/period";
 import { requireMember, requireRole } from "@/lib/session";
 import {
@@ -948,7 +949,7 @@ export async function deleteRule(
 
 export async function confirmBatch(
   batchId: string,
-): Promise<{ ok: true; batchId: string } | { ok: false; error: string }> {
+): Promise<{ ok: true; batchId: string; targetMonth: string } | { ok: false; error: string }> {
   try {
     const sessionMember = await requireMember();
     const bId = batchIdSchema.parse(batchId);
@@ -970,7 +971,8 @@ export async function confirmBatch(
 
     // Idempotência
     if (batch.status === "confirmado") {
-      return { ok: true, batchId: batch.id };
+      const summary = await getBatchSummary(sessionMember.familyId, batch.id);
+      return { ok: true, batchId: batch.id, targetMonth: computeTargetMonth(summary) };
     }
     if (batch.status === "desfeito") {
       return {
@@ -1243,7 +1245,10 @@ export async function confirmBatch(
         .where(eq(importBatches.id, batch.id));
     });
 
-    return { ok: true, batchId: batch.id };
+    const summary = await getBatchSummary(sessionMember.familyId, batch.id);
+    const targetMonth = computeTargetMonth(summary);
+
+    return { ok: true, batchId: batch.id, targetMonth };
   } catch (err: unknown) {
     return {
       ok: false,

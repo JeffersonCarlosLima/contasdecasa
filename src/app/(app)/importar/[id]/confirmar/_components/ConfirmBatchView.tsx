@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { AlertTriangle } from "lucide-react";
 import { formatBRL } from "@/lib/money";
 import { confirmBatch } from "@/app/(app)/importar/actions";
 import { computeReviewTotals } from "../../_components/helpers";
@@ -44,7 +45,14 @@ export function ConfirmBatchView({ data }: ConfirmBatchViewProps) {
           setServerError(res.error);
           return;
         }
-        router.push("/importar/historico");
+
+        const targetMonth = res.targetMonth;
+
+        if (targetMonth) {
+          router.push(`/despesas?mes=${targetMonth}&lote=${batch.id}`);
+        } else {
+          router.push(`/despesas?lote=${batch.id}`);
+        }
       } catch (err) {
         setServerError(
           err instanceof Error
@@ -61,7 +69,7 @@ export function ConfirmBatchView({ data }: ConfirmBatchViewProps) {
         <div className="cc-top__titles">
           <Link
             href={`/importar/${batch.id}`}
-            className="label"
+            className="label cc-touch-link"
             style={{ textDecoration: "none" }}
           >
             ← Voltar para revisão
@@ -80,7 +88,7 @@ export function ConfirmBatchView({ data }: ConfirmBatchViewProps) {
           style={{
             fontSize: 14,
             padding: "12px 16px",
-            backgroundColor: "var(--danger-subtle, #fde8e8)",
+            backgroundColor: "var(--danger-soft)",
             borderRadius: "var(--radius-md)",
             border: "1px solid var(--danger)",
           }}
@@ -97,7 +105,7 @@ export function ConfirmBatchView({ data }: ConfirmBatchViewProps) {
             alignItems: "center",
             gap: 12,
             padding: "14px 16px",
-            backgroundColor: "var(--danger-subtle, #fde8e8)",
+            backgroundColor: "var(--danger-soft)",
             border: "1px solid var(--danger)",
             borderRadius: "var(--radius-md)",
             color: "var(--danger)",
@@ -105,7 +113,7 @@ export function ConfirmBatchView({ data }: ConfirmBatchViewProps) {
             fontWeight: 500,
           }}
         >
-          <span style={{ fontSize: 18 }} aria-hidden="true">⚠️</span>
+          <AlertTriangle size={18} aria-hidden="true" style={{ flexShrink: 0 }} />
           <span>
             <b>Atenção:</b> Existem {totals.missingCategoryCount} despesa{totals.missingCategoryCount > 1 ? "s" : ""}{" "}
             selecionada{totals.missingCategoryCount > 1 ? "s" : ""} sem categoria. Toda despesa precisa de uma
@@ -122,7 +130,7 @@ export function ConfirmBatchView({ data }: ConfirmBatchViewProps) {
             alignItems: "center",
             gap: 12,
             padding: "14px 16px",
-            backgroundColor: "var(--danger-subtle, #fde8e8)",
+            backgroundColor: "var(--danger-soft)",
             border: "1px solid var(--danger)",
             borderRadius: "var(--radius-md)",
             color: "var(--danger)",
@@ -130,7 +138,7 @@ export function ConfirmBatchView({ data }: ConfirmBatchViewProps) {
             fontWeight: 500,
           }}
         >
-          <span style={{ fontSize: 18 }} aria-hidden="true">⚠️</span>
+          <AlertTriangle size={18} aria-hidden="true" style={{ flexShrink: 0 }} />
           <span>
             <b>Atenção:</b> Existem {totals.missingOwnerCount} receita{totals.missingOwnerCount > 1 ? "s" : ""}{" "}
             selecionada{totals.missingOwnerCount > 1 ? "s" : ""} sem membro responsável atribuído.

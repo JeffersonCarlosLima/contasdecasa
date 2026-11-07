@@ -201,8 +201,9 @@ export function UploadForm({
           style={{
             fontSize: 14,
             padding: "12px 16px",
-            backgroundColor: "var(--danger-subtle, #fde8e8)",
-            borderRadius: "var(--radius-md, 8px)",
+            backgroundColor: "var(--danger-soft)",
+            border: "1px solid var(--danger)",
+            borderRadius: "var(--radius-md)",
           }}
         >
           {generalError}
@@ -277,7 +278,7 @@ export function UploadForm({
             {isAdminOrOwner && (
               <Link
                 href="/tipos#formas"
-                className="cc-muted"
+                className="cc-muted cc-touch-link"
                 style={{ fontSize: 13, textDecoration: "underline" }}
               >
                 Gerenciar formas de pagamento

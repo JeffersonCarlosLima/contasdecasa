@@ -99,3 +99,32 @@ export function getSituationLabel(situation: ImportRowReviewItem["situation"]): 
       return { label: "Nova", badge: "paid" };
   }
 }
+
+export function getDisabledProceedReason(totals: {
+  canProceedToConfirm: boolean;
+  selectedCount: number;
+  missingCategoryCount: number;
+  missingOwnerCount: number;
+}): string | null {
+  if (totals.canProceedToConfirm) return null;
+
+  if (totals.selectedCount === 0) {
+    return "Selecione ao menos um lançamento para continuar.";
+  }
+
+  const parts: string[] = [];
+  if (totals.missingCategoryCount > 0) {
+    const plural = totals.missingCategoryCount > 1 ? "s" : "";
+    parts.push(`a categoria de ${totals.missingCategoryCount} despesa${plural}`);
+  }
+  if (totals.missingOwnerCount > 0) {
+    const plural = totals.missingOwnerCount > 1 ? "s" : "";
+    parts.push(`o responsável de ${totals.missingOwnerCount} receita${plural}`);
+  }
+
+  if (parts.length > 0) {
+    return `Defina ${parts.join(" e ")} para continuar.`;
+  }
+
+  return "Selecione ao menos um lançamento para continuar.";
+}

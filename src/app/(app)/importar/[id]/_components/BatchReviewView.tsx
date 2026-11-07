@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
+import { AlertTriangle } from "lucide-react";
 import { formatBRL } from "@/lib/money";
 import {
   clearTransferSuggestion,
@@ -13,6 +14,7 @@ import { BulkActionsBar } from "./BulkActionsBar";
 import {
   computeReviewTotals,
   filterReviewRows,
+  getDisabledProceedReason,
 } from "./helpers";
 import { ReviewMobileCards } from "./ReviewMobileCards";
 import { ReviewTable } from "./ReviewTable";
@@ -72,6 +74,10 @@ export function BatchReviewView({
   const totals = useMemo(() => {
     return computeReviewTotals(rows, selectedIds);
   }, [rows, selectedIds]);
+
+  const disabledProceedReason = useMemo(() => {
+    return getDisabledProceedReason(totals);
+  }, [totals]);
 
   // Contadores por filtro
   const counts = useMemo(() => {
@@ -411,7 +417,11 @@ export function BatchReviewView({
       {/* Top Header & Navigation */}
       <div className="cc-top">
         <div className="cc-top__titles">
-          <Link href="/importar" className="label" style={{ textDecoration: "none" }}>
+          <Link
+            href="/importar"
+            className="label cc-touch-link"
+            style={{ textDecoration: "none" }}
+          >
             ← Voltar para envio
           </Link>
           <h1 className="heading">Revisar extrato</h1>
@@ -420,31 +430,50 @@ export function BatchReviewView({
           </span>
         </div>
 
-        <div className="cc-actions">
-          {totals.canProceedToConfirm ? (
-            <Link
-              href={`/importar/${batch.id}/confirmar`}
-              className="cc-btn cc-btn--primary"
-              style={{ textDecoration: "none" }}
-            >
-              Continuar para confirmação ({totals.selectedCount})
-            </Link>
-          ) : (
-            <button
-              type="button"
-              className="cc-btn cc-btn--primary"
-              disabled
-              title={
-                totals.hasSelectedExpensesWithoutCategory
-                  ? "Há despesas selecionadas sem categoria definida."
-                  : totals.missingOwnerCount > 0
-                  ? "Há receitas selecionadas sem responsável definido."
-                  : "Selecione ao menos um lançamento."
-              }
-            >
-              Continuar para confirmação ({totals.selectedCount})
-            </button>
-          )}
+        <div className="cc-actions cc-hide-sm">
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 4,
+            }}
+          >
+            {totals.canProceedToConfirm ? (
+              <Link
+                href={`/importar/${batch.id}/confirmar`}
+                className="cc-btn cc-btn--primary"
+                style={{ textDecoration: "none" }}
+              >
+                Continuar para confirmação ({totals.selectedCount})
+              </Link>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="cc-btn cc-btn--primary"
+                  disabled
+                  aria-describedby={
+                    disabledProceedReason ? "disabled-proceed-reason" : undefined
+                  }
+                >
+                  Continuar para confirmação ({totals.selectedCount})
+                </button>
+                {disabledProceedReason && (
+                  <span
+                    id="disabled-proceed-reason"
+                    role="status"
+                    className="caption cc-muted"
+                    style={{
+                      lineHeight: "1.4",
+                      maxWidth: 360,
+                    }}
+                  >
+                    {disabledProceedReason}
+                  </span>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -456,7 +485,8 @@ export function BatchReviewView({
           style={{
             fontSize: 14,
             padding: "12px 16px",
-            backgroundColor: "var(--danger-subtle, #fde8e8)",
+            backgroundColor: "var(--danger-soft)",
+            border: "1px solid var(--danger)",
             borderRadius: "var(--radius-md)",
           }}
         >
@@ -490,7 +520,7 @@ export function BatchReviewView({
             alignItems: "center",
             gap: 12,
             padding: "14px 16px",
-            backgroundColor: "var(--danger-subtle, #fde8e8)",
+            backgroundColor: "var(--danger-soft)",
             border: "1px solid var(--danger)",
             borderRadius: "var(--radius-md)",
             color: "var(--danger)",
@@ -498,7 +528,7 @@ export function BatchReviewView({
             fontWeight: 500,
           }}
         >
-          <span style={{ fontSize: 18 }} aria-hidden="true">⚠️</span>
+          <AlertTriangle size={18} aria-hidden="true" style={{ flexShrink: 0 }} />
           <span>
             <b>Atenção:</b> {totals.missingCategoryCount} despesa{totals.missingCategoryCount > 1 ? "s" : ""}{" "}
             selecionada{totals.missingCategoryCount > 1 ? "s estão" : " está"} sem categoria. Escolha a
@@ -515,7 +545,7 @@ export function BatchReviewView({
             alignItems: "center",
             gap: 12,
             padding: "14px 16px",
-            backgroundColor: "var(--danger-subtle, #fde8e8)",
+            backgroundColor: "var(--danger-soft)",
             border: "1px solid var(--danger)",
             borderRadius: "var(--radius-md)",
             color: "var(--danger)",
@@ -523,7 +553,7 @@ export function BatchReviewView({
             fontWeight: 500,
           }}
         >
-          <span style={{ fontSize: 18 }} aria-hidden="true">⚠️</span>
+          <AlertTriangle size={18} aria-hidden="true" style={{ flexShrink: 0 }} />
           <span>
             <b>Atenção:</b> {totals.missingOwnerCount} receita{totals.missingOwnerCount > 1 ? "s estão" : " está"}{" "}
             sem membro responsável. Receitas e salários precisam ser atribuídos a um membro.
@@ -649,6 +679,50 @@ export function BatchReviewView({
         members={members}
         isPending={isPending}
       />
+
+      {/* Espaço reservado para a barra fixa no celular não cobrir o último card */}
+      <div className="cc-only-sm" style={{ height: 110 }} aria-hidden="true" />
+
+      {/* Barra fixa de ação no rodapé para telas móveis */}
+      <div className="cc-review-bar">
+        {totals.canProceedToConfirm ? (
+          <Link
+            href={`/importar/${batch.id}/confirmar`}
+            className="cc-btn cc-btn--primary"
+            style={{ width: "100%", textDecoration: "none" }}
+          >
+            Continuar para confirmação ({totals.selectedCount})
+          </Link>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="cc-btn cc-btn--primary"
+              style={{ width: "100%" }}
+              disabled
+              aria-describedby={
+                disabledProceedReason ? "mobile-disabled-proceed-reason" : undefined
+              }
+            >
+              Continuar para confirmação ({totals.selectedCount})
+            </button>
+            {disabledProceedReason && (
+              <span
+                id="mobile-disabled-proceed-reason"
+                role="status"
+                className="caption cc-muted"
+                style={{
+                  textAlign: "center",
+                  lineHeight: "1.3",
+                  fontSize: 12,
+                }}
+              >
+                {disabledProceedReason}
+              </span>
+            )}
+          </>
+        )}
+      </div>
 
       {/* Modal para criar regra */}
       <RuleModal

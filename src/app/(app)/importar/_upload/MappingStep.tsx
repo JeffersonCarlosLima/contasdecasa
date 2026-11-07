@@ -119,8 +119,9 @@ export function MappingStep({
           style={{
             fontSize: 14,
             padding: "12px 16px",
-            backgroundColor: "var(--danger-subtle, #fde8e8)",
-            borderRadius: "var(--radius-md, 8px)",
+            backgroundColor: "var(--danger-soft)",
+            border: "1px solid var(--danger)",
+            borderRadius: "var(--radius-md)",
           }}
         >
           {error}

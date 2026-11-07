@@ -83,7 +83,7 @@ export function FileDropzone({
           border: isDragOver
             ? "2px dashed var(--brand-ink)"
             : error
-            ? "1px dashed var(--danger, #d9383a)"
+            ? "1px dashed var(--danger)"
             : "1px dashed var(--line)",
           background: isDragOver
             ? "var(--surface-sunken)"
