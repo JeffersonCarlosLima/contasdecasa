@@ -107,7 +107,7 @@ describe("Helpers e formatação da tela de Família", () => {
       const link = "https://app.contasdecasa.com/convite/token123";
       const url = buildWhatsAppInviteUrl(familyName, link);
 
-      const expectedMessage = `Você foi convidado para a Família Lima no Contas da Casa. Crie sua conta com este email e entre na família: ${link}`;
+      const expectedMessage = `Você foi convidado para a Família Lima no Contas da Casa. Crie sua conta e entre na família: ${link}`;
       expect(url).toBe(`https://wa.me/?text=${encodeURIComponent(expectedMessage)}`);
     });
   });

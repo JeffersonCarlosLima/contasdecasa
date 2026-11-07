@@ -2,8 +2,11 @@ export function getInviteHeading(familyName: string): string {
   return `Você foi convidado para a ${familyName}`;
 }
 
-export function getInviteSupportText(invitedByName: string, email: string): string {
-  return `${invitedByName} convidou ${email}.`;
+export function getInviteSupportText(invitedByName: string, email?: string | null): string {
+  if (email) {
+    return `${invitedByName} convidou ${email}.`;
+  }
+  return `${invitedByName} convidou você.`;
 }
 
 export const EXPIRED_INVITE_MESSAGE =
@@ -17,10 +20,10 @@ export function isEmailMatch(
   return sessionEmail.trim().toLowerCase() === inviteEmail.trim().toLowerCase();
 }
 
-export function getCadastroLink(email: string): string {
-  return `/cadastro?email=${encodeURIComponent(email)}`;
+export function getCadastroLink(token: string): string {
+  return `/cadastro?convite=${encodeURIComponent(token)}`;
 }
 
-export function getEntrarLink(email: string): string {
-  return `/entrar?email=${encodeURIComponent(email)}`;
+export function getEntrarLink(token: string): string {
+  return `/entrar?convite=${encodeURIComponent(token)}`;
 }

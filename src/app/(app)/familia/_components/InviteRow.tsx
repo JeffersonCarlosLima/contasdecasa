@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/Button";
 import { formatInviteMeta } from "./helpers";
-import type { FamilyInviteItem } from "./types";
+import { KINSHIP_LABELS, type FamilyInviteItem } from "./types";
 
 interface InviteRowProps {
   invite: FamilyInviteItem;
@@ -17,11 +17,15 @@ export function InviteRow({
   onResend,
   onManage,
 }: InviteRowProps) {
+  const kinshipLabel = KINSHIP_LABELS[invite.kinship] ?? "Outro parente";
   const metaText = formatInviteMeta({
     kinship: invite.kinship,
     role: invite.role,
     expiresAt: invite.expiresAt,
   });
+
+  const displayName = invite.email || `Convite pendente · ${kinshipLabel}`;
+  const inviteTargetLabel = invite.email ?? `convite (${kinshipLabel})`;
 
   return (
     <div className="cc-member">
@@ -30,8 +34,10 @@ export function InviteRow({
       </span>
       <div className="cc-member__main">
         <span className="cc-member__name">
-          {invite.email}{" "}
-          <span className="cc-role cc-role--invited">Convite pendente</span>
+          {displayName}{" "}
+          {invite.email && (
+            <span className="cc-role cc-role--invited">Convite pendente</span>
+          )}
         </span>
         <span className="cc-member__meta">{metaText}</span>
       </div>
@@ -43,7 +49,7 @@ export function InviteRow({
               variant="ghost"
               size="sm"
               onClick={() => onManage(invite)}
-              aria-label={`Gerenciar convite de ${invite.email}`}
+              aria-label={`Gerenciar ${inviteTargetLabel}`}
             >
               Opções
             </Button>
@@ -54,7 +60,7 @@ export function InviteRow({
             size="sm"
             onClick={() => onResend(invite)}
             disabled={isResending}
-            aria-label={`Reenviar convite para ${invite.email}`}
+            aria-label={`Reenviar ${inviteTargetLabel}`}
           >
             {isResending ? "Enviando..." : "Reenviar"}
           </Button>

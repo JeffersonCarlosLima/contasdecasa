@@ -10,7 +10,6 @@ interface InviteCardProps {
 }
 
 export function InviteCard({ canManage, onInviteSuccess }: InviteCardProps) {
-  const [email, setEmail] = useState("");
   const [kinship, setKinship] = useState<"titular" | "conjuge" | "filho" | "outro">("conjuge");
   const [role, setRole] = useState<"admin" | "membro">("membro");
   const [participatesInSplit, setParticipatesInSplit] = useState(true);
@@ -25,7 +24,6 @@ export function InviteCard({ canManage, onInviteSuccess }: InviteCardProps) {
     setError(null);
     startTransition(async () => {
       const res = await inviteMember({
-        email,
         role,
         kinship,
         participatesInSplit,
@@ -36,7 +34,6 @@ export function InviteCard({ canManage, onInviteSuccess }: InviteCardProps) {
         return;
       }
 
-      setEmail("");
       setKinship("conjuge");
       setRole("membro");
       setParticipatesInSplit(true);
@@ -52,28 +49,11 @@ export function InviteCard({ canManage, onInviteSuccess }: InviteCardProps) {
     >
       <h2 className="title">Convidar membro</h2>
 
-      <label className="cc-field">
-        <span className="cc-field__label">Email</span>
-        <span className={`cc-input ${error ? "cc-input--error" : ""}`}>
-          <input
-            className="cc-input__text"
-            type="email"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              if (error) setError(null);
-            }}
-            placeholder="nome@email.com"
-            required
-            disabled={!canManage || isPending}
-          />
+      {error && (
+        <span className="cc-field__hint cc-field__hint--error" role="alert">
+          {error}
         </span>
-        {error && (
-          <span className="cc-field__hint cc-field__hint--error" role="alert">
-            {error}
-          </span>
-        )}
-      </label>
+      )}
 
       <label className="cc-field">
         <span className="cc-field__label">Parentesco</span>
@@ -119,12 +99,11 @@ export function InviteCard({ canManage, onInviteSuccess }: InviteCardProps) {
         variant="primary"
         disabled={!canManage || isPending}
       >
-        {isPending ? "Enviando convite..." : "Enviar convite"}
+        {isPending ? "Criando link..." : "Criar link de convite"}
       </Button>
 
       <span className="caption cc-muted">
-        O convite vale 7 dias. Sem email configurado, o app mostra um link para você mandar por
-        WhatsApp.
+        O convite vale 7 dias e serve para uma pessoa. Mande o link por WhatsApp.
       </span>
     </form>
   );

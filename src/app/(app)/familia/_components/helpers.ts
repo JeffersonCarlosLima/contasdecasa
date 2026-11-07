@@ -79,6 +79,6 @@ export function getPluralizedSupportText(
 }
 
 export function buildWhatsAppInviteUrl(familyName: string, link: string): string {
-  const message = `Você foi convidado para a ${familyName} no Contas da Casa. Crie sua conta com este email e entre na família: ${link}`;
+  const message = `Você foi convidado para a ${familyName} no Contas da Casa. Crie sua conta e entre na família: ${link}`;
   return `https://wa.me/?text=${encodeURIComponent(message)}`;
 }

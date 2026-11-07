@@ -6,13 +6,12 @@ import {
   getEntrarLink,
   getInviteHeading,
   getInviteSupportText,
-  isEmailMatch,
 } from "./helpers";
 
 export interface InviteData {
   familyName: string;
   invitedByName: string;
-  email: string;
+  email?: string | null;
 }
 
 interface InviteContentProps {
@@ -53,8 +52,6 @@ export function InviteContent({ token, inviteData, sessionEmail }: InviteContent
     );
   }
 
-  const isEmailMatching = isEmailMatch(sessionEmail, inviteData.email);
-
   return (
     <div
       className="cc-card"
@@ -74,59 +71,25 @@ export function InviteContent({ token, inviteData, sessionEmail }: InviteContent
       </div>
 
       {sessionEmail ? (
-        isEmailMatching ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            <p className="caption cc-muted" style={{ margin: 0 }}>
-              Você já está conectado como <strong>{sessionEmail}</strong>. Clique abaixo para entrar
-              na família e acessar as contas da casa.
-            </p>
-            <AcceptInviteButton token={token} />
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <div
-              role="alert"
-              style={{
-                padding: "var(--space-3)",
-                background: "var(--pending-soft)",
-                borderRadius: "var(--radius-md)",
-              }}
-            >
-              <p className="body" style={{ color: "var(--pending)", margin: 0, fontSize: "14px" }}>
-                Você está conectado como <strong>{sessionEmail}</strong>, mas este convite foi
-                enviado para <strong>{inviteData.email}</strong>.
-              </p>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              <Link
-                className="cc-btn cc-btn--primary"
-                href={getEntrarLink(inviteData.email)}
-                style={{ textDecoration: "none", width: "100%", boxSizing: "border-box" }}
-              >
-                Entrar com o email do convite
-              </Link>
-              <Link
-                className="cc-btn cc-btn--secondary"
-                href={getCadastroLink(inviteData.email)}
-                style={{ textDecoration: "none", width: "100%", boxSizing: "border-box" }}
-              >
-                Criar conta com este email
-              </Link>
-            </div>
-          </div>
-        )
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          <p className="caption cc-muted" style={{ margin: 0 }}>
+            Você já está conectado como <strong>{sessionEmail}</strong>. Clique abaixo para entrar
+            na família e acessar as contas da casa.
+          </p>
+          <AcceptInviteButton token={token} />
+        </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           <Link
             className="cc-btn cc-btn--primary"
-            href={getCadastroLink(inviteData.email)}
+            href={getCadastroLink(token)}
             style={{ textDecoration: "none", width: "100%", boxSizing: "border-box" }}
           >
             Criar conta
           </Link>
           <Link
             className="cc-btn cc-btn--secondary"
-            href={getEntrarLink(inviteData.email)}
+            href={getEntrarLink(token)}
             style={{ textDecoration: "none", width: "100%", boxSizing: "border-box" }}
           >
             Já tenho conta

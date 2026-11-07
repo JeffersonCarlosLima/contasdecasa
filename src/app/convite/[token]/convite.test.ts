@@ -15,9 +15,15 @@ describe("Tela de Convite (/convite/[token])", () => {
       expect(heading).toBe("Você foi convidado para a Família Lima");
     });
 
-    it("gera o texto de apoio com quem convidou e o email de destino", () => {
+    it("gera o texto de apoio com quem convidou e o email de destino quando informado", () => {
       const support = getInviteSupportText("Jefferson", "parente@email.com");
       expect(support).toBe("Jefferson convidou parente@email.com.");
+    });
+
+    it("gera o texto de apoio simplificado quando não há email no convite", () => {
+      const support = getInviteSupportText("Jefferson", null);
+      expect(support).toBe("Jefferson convidou você.");
+      expect(getInviteSupportText("Jefferson")).toBe("Jefferson convidou você.");
     });
 
     it("possui mensagem exata de token expirado ou inválido", () => {
@@ -26,14 +32,14 @@ describe("Tela de Convite (/convite/[token])", () => {
       );
     });
 
-    it("gera link de cadastro com query param de email", () => {
-      const link = getCadastroLink("parente@email.com");
-      expect(link).toBe("/cadastro?email=parente%40email.com");
+    it("gera link de cadastro com query param de convite", () => {
+      const link = getCadastroLink("token123");
+      expect(link).toBe("/cadastro?convite=token123");
     });
 
-    it("gera link de entrar com query param de email", () => {
-      const link = getEntrarLink("parente@email.com");
-      expect(link).toBe("/entrar?email=parente%40email.com");
+    it("gera link de entrar com query param de convite", () => {
+      const link = getEntrarLink("token123");
+      expect(link).toBe("/entrar?convite=token123");
     });
   });
 

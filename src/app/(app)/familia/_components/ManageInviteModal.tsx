@@ -70,7 +70,7 @@ export function ManageInviteModal({
         <div>
           <span className="label cc-muted">Destinatário</span>
           <div className="title" style={{ fontSize: "16px", marginTop: "4px" }}>
-            {invite.email}
+            {invite.email || "Link de convite (aberto)"}
           </div>
         </div>
 
