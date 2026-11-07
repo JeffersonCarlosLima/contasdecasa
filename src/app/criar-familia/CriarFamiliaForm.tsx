@@ -168,8 +168,13 @@ export function CriarFamiliaForm() {
         }}
       >
         <h2 className="title">Próximo: convidar quem divide as contas com você</h2>
-        <div className="cc-input" style={{ background: "var(--surface-raised)" }}>
+        <label
+          htmlFor="invite-email"
+          className="cc-input"
+          style={{ background: "var(--surface-raised)", cursor: "text" }}
+        >
           <input
+            id="invite-email"
             className="cc-input__text"
             type="email"
             value={inviteEmail}
@@ -178,7 +183,7 @@ export function CriarFamiliaForm() {
             autoComplete="email"
             aria-label="Email de quem divide as contas"
           />
-        </div>
+        </label>
         <span className="caption cc-muted">
           Você também pode adicionar filhos como dependentes, sem login. Pular esta etapa não perde nada.
         </span>

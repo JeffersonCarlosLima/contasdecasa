@@ -106,36 +106,48 @@ export function FamilyPageClient({
           <RoleTable />
         </section>
 
-        <aside
-          style={{
-            flex: "1 1 320px",
-            minWidth: 0,
-            display: "flex",
-            flexDirection: "column",
-            gap: "24px",
-          }}
-        >
-          <InviteCard
-            canManage={canManage}
-            onInviteSuccess={(link) => {
-              setGeneratedLink(link);
-              handleRefresh();
+        {canManage ? (
+          <aside
+            style={{
+              flex: "1 1 320px",
+              minWidth: 0,
+              display: "flex",
+              flexDirection: "column",
+              gap: "24px",
             }}
-          />
-
-          <DependentCard
-            canManage={canManage}
-            onAddClick={() => setIsAddDependentOpen(true)}
-          />
-
-          <a
-            className="cc-btn cc-btn--secondary cc-only-sm"
-            href="/tipos"
-            style={{ textDecoration: "none" }}
           >
-            Tipos e formas
-          </a>
-        </aside>
+            <InviteCard
+              canManage={canManage}
+              onInviteSuccess={(link) => {
+                setGeneratedLink(link);
+                handleRefresh();
+              }}
+            />
+
+            <DependentCard
+              canManage={canManage}
+              onAddClick={() => setIsAddDependentOpen(true)}
+            />
+
+            <a
+              className="cc-btn cc-btn--secondary cc-only-sm"
+              href="/tipos"
+              style={{ textDecoration: "none" }}
+            >
+              Tipos e formas
+            </a>
+          </aside>
+        ) : (
+          <div className="cc-only-sm" style={{ width: "100%", marginTop: "12px" }}>
+            <a
+              className="cc-btn cc-btn--secondary"
+              href="/tipos"
+              style={{ textDecoration: "none", display: "inline-flex" }}
+            >
+              Tipos e formas
+            </a>
+          </div>
+        )}
       </div>
 
       {/* Modais */}

@@ -47,7 +47,14 @@ export function MobileHeader({
       <span className="cc-logo" style={{ padding: 0, fontSize: "19px" }}>
         {title}
       </span>
-      <MemberAvatar name={userName} color={userColor} size="lg" />
+      <Link
+        href="/conta"
+        className="cc-month__btn"
+        aria-label="Minha conta"
+        style={{ textDecoration: "none", minWidth: 40, minHeight: 40 }}
+      >
+        <MemberAvatar name={userName} color={userColor} size="lg" />
+      </Link>
     </header>
   );
 }

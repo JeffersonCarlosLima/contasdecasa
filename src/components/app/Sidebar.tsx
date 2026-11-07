@@ -71,7 +71,18 @@ export function Sidebar({
         </Link>
       )}
 
-      <div className="cc-side__foot">
+      <Link
+        href="/conta"
+        className="cc-side__foot focus-visible:outline-2 focus-visible:outline-[var(--focus)] focus-visible:outline-offset-2 hover:bg-[var(--surface-sunken)]"
+        aria-label="Minha conta"
+        aria-current={pathname === "/conta" ? "page" : undefined}
+        style={{
+          textDecoration: "none",
+          color: "inherit",
+          minHeight: 40,
+          borderRadius: "var(--radius-md)",
+        }}
+      >
         <MemberAvatar name={userName} color={userColor} size="lg" />
         <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
           <span
@@ -95,7 +106,7 @@ export function Sidebar({
             {familyName} · {memberCount} {memberLabel}
           </span>
         </div>
-      </div>
+      </Link>
     </aside>
   );
 }

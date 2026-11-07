@@ -15,7 +15,9 @@
 .cc-nav a:hover { background:var(--surface-sunken); color:var(--ink); }
 .cc-nav a[aria-current="page"] { background:var(--brand-soft); color:var(--brand-ink); font-weight:600; }
 .cc-nav svg { width:20px; height:20px; flex:none; }
-.cc-side__foot { margin-top:auto; display:flex; align-items:center; gap:var(--space-2); padding:var(--space-3); border-top:1px solid var(--line); }
+.cc-side__foot { margin-top:auto; display:flex; align-items:center; gap:var(--space-2); padding:var(--space-3); border-top:1px solid var(--line); border-radius:var(--radius-md); text-decoration:none; color:inherit; min-height:40px; transition:background-color .15s ease; }
+.cc-side__foot:hover { background:var(--surface-sunken); }
+.cc-side__foot:focus-visible { outline:2px solid var(--focus); outline-offset:2px; }
 .cc-main { flex:1 1 auto; min-width:0; box-sizing:border-box; padding:var(--space-6) 40px var(--space-8); }
 .cc-wrap { max-width:1120px; margin:0 auto; display:flex; flex-direction:column; gap:var(--space-6); }
 .cc-top { display:flex; flex-wrap:wrap; gap:var(--space-4); align-items:center; justify-content:space-between; }
@@ -28,7 +30,7 @@
 .cc-avatar--lg { width:32px; height:32px; font-size:13px; }
 .cc-family-switch { display:flex; align-items:center; gap:var(--space-2); padding:var(--space-2) var(--space-3); border:1px solid var(--line); border-radius:var(--radius-md); background:var(--surface); }
 .cc-person-row { display:grid; grid-template-columns:minmax(130px, 180px) 1fr auto; align-items:center; gap:var(--space-3); padding:var(--space-2) 0; }
-@media (max-width: 760px) { .cc-person-row { grid-template-columns:1fr auto; } .cc-person-row .cc-cat__track { grid-column:1 / -1; order:3; } }
+@media (max-width: 760px), (max-height: 500px) and (orientation: landscape) and (pointer: coarse) { .cc-person-row { grid-template-columns:1fr auto; } .cc-person-row .cc-cat__track { grid-column:1 / -1; order:3; } }
 
 /* barras por categoria */
 .cc-cat { display:grid; grid-template-columns:minmax(110px, 160px) 1fr auto; align-items:center; gap:var(--space-3); padding:var(--space-2) 0; }
@@ -43,6 +45,8 @@
 .cc-table th { text-align:left; font:500 13px/18px var(--font-sans); color:var(--ink-muted); background:var(--surface-sunken); padding:var(--space-3) var(--space-4); }
 .cc-table td { padding:var(--space-3) var(--space-4); border-top:1px solid var(--line); font:400 15px/22px var(--font-sans); vertical-align:middle; }
 .cc-table .num { text-align:right; font-variant-numeric:tabular-nums; font-weight:600; }
+.cc-table th .cc-check,
+.cc-table td .cc-check { display:inline-flex; align-items:center; justify-content:center; min-width:40px; min-height:40px; margin:0; }
 .cc-filters { display:flex; flex-wrap:wrap; gap:var(--space-2); align-items:center; }
 .cc-select { height:40px; padding:0 var(--space-3); border:1px solid var(--line-strong); border-radius:var(--radius-md); background:var(--surface-raised); color:var(--ink); font:500 14px/20px var(--font-sans); }
 
@@ -52,16 +56,16 @@
 .cc-seg { display:inline-flex; background:var(--surface-sunken); border-radius:var(--radius-md); padding:var(--space-1); gap:var(--space-1); flex-wrap:wrap; }
 .cc-seg button { height:36px; padding:0 var(--space-4); border:0; border-radius:8px; background:transparent; color:var(--ink-muted); font:600 14px/20px var(--font-sans); cursor:pointer; }
 .cc-seg button[aria-pressed="true"] { background:var(--surface-raised); color:var(--ink); box-shadow:var(--shadow-card); }
-.cc-check { display:flex; align-items:center; gap:var(--space-2); font:500 14px/20px var(--font-sans); }
-.cc-check input { width:18px; height:18px; accent-color:var(--brand); }
+.cc-check { display:flex; align-items:center; gap:var(--space-2); font:500 14px/20px var(--font-sans); min-height:40px; cursor:pointer; }
+.cc-check input { width:18px; height:18px; accent-color:var(--brand); cursor:pointer; }
 .cc-formfoot { display:flex; flex-wrap:wrap; gap:var(--space-3); justify-content:flex-end; padding-top:var(--space-4); border-top:1px solid var(--line); margin-top:var(--space-2); }
 
-/* celular */
-@media (max-width: 760px) {
+/* celular e celular deitado (paisagem baixa com toque) */
+@media (max-width: 760px), (max-height: 500px) and (orientation: landscape) and (pointer: coarse) {
   .cc-app { flex-direction:column; }
   .cc-side { display:none; }
   .cc-mtop { display:flex; align-items:center; justify-content:space-between; padding:var(--space-3) var(--space-4); background:var(--surface-raised); border-bottom:1px solid var(--line); }
-  .cc-main { padding:var(--space-4) var(--space-4) var(--space-6); }
+  .cc-main { padding:var(--space-4) var(--space-4) calc(68px + var(--space-6) + env(safe-area-inset-bottom, 0px)); }
   .cc-wrap { gap:var(--space-5); }
   .display { font-size:30px; line-height:34px; }
   .cc-hide-sm { display:none !important; }
@@ -74,10 +78,19 @@
   .cc-cat__track { grid-column:1 / -1; order:3; }
   .cc-split__value { font-size:20px; line-height:26px; }
   .cc-actions--wide .cc-btn { flex:1 1 auto; }
-  .cc-bottom { display:flex; position:sticky; bottom:0; z-index:5; height:68px; background:var(--surface-raised); border-top:1px solid var(--line); justify-content:space-around; align-items:center; padding:0 var(--space-2); }
+  .cc-bottom { display:flex; position:sticky; bottom:0; z-index:5; height:calc(68px + env(safe-area-inset-bottom, 0px)); background:var(--surface-raised); border-top:1px solid var(--line); justify-content:space-around; align-items:center; padding:0 var(--space-2) env(safe-area-inset-bottom, 0px); }
   .cc-bottom a { display:flex; flex-direction:column; align-items:center; gap:2px; min-width:56px; padding:var(--space-1) 0; color:var(--ink-muted); text-decoration:none; font:500 11px/14px var(--font-sans); }
   .cc-bottom a[aria-current="page"] { color:var(--brand-ink); font-weight:600; }
   .cc-bottom svg { width:22px; height:22px; }
   .cc-bottom .cc-fab { width:52px; height:52px; min-width:0; border-radius:var(--radius-full); background:var(--brand); color:var(--on-brand); justify-content:center; margin-top:-22px; box-shadow:var(--shadow-pop); }
+  .cc-seg button { min-height:40px; }
+  .cc-btn--sm { min-height:40px; }
+  .cc-month__btn { width:40px; height:40px; min-width:40px; min-height:40px; }
+  .cc-chip { min-height:40px; }
 }
-@media (min-width: 761px) { .cc-only-sm { display:none !important; } }
+@media (min-width: 761px) and (min-height: 501px),
+       (min-width: 761px) and (orientation: portrait),
+       (min-width: 761px) and (not (pointer: coarse)),
+       (min-width: 761px) and (pointer: fine) {
+  .cc-only-sm { display:none !important; }
+}

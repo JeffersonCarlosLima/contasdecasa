@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { MonthHeader } from "./MonthHeader";
 import { IncomeCard } from "./IncomeCard";
@@ -51,6 +51,19 @@ export function FechamentoClient({ data, canManage }: FechamentoClientProps) {
   // 2. Modais e feedback
   const [isConfirmCloseOpen, setIsConfirmCloseOpen] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const feedbackRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (feedback) {
+      const prefersReducedMotion =
+        typeof window !== "undefined" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      window.scrollTo({
+        top: 0,
+        behavior: prefersReducedMotion ? "auto" : "smooth",
+      });
+    }
+  }, [feedback]);
 
   // 3. Transições assíncronas
   const [isSaving, startSave] = useTransition();
@@ -181,6 +194,7 @@ export function FechamentoClient({ data, canManage }: FechamentoClientProps) {
 
       {feedback && (
         <div
+          ref={feedbackRef}
           role={feedback.type === "success" ? "status" : "alert"}
           aria-live="polite"
           style={{

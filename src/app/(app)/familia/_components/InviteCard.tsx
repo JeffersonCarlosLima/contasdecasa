@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { inviteMember } from "@/app/(app)/familia/actions";
 
@@ -10,12 +10,15 @@ interface InviteCardProps {
 }
 
 export function InviteCard({ canManage, onInviteSuccess }: InviteCardProps) {
+  const [email, setEmail] = useState("");
   const [kinship, setKinship] = useState<"titular" | "conjuge" | "filho" | "outro">("conjuge");
   const [role, setRole] = useState<"admin" | "membro">("membro");
   const [participatesInSplit, setParticipatesInSplit] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [isPending, startTransition] = useTransition();
+  const emailInputId = useId();
+  const errorId = `${emailInputId}-error`;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,6 +27,7 @@ export function InviteCard({ canManage, onInviteSuccess }: InviteCardProps) {
     setError(null);
     startTransition(async () => {
       const res = await inviteMember({
+        email: email.trim() || undefined,
         role,
         kinship,
         participatesInSplit,
@@ -34,6 +38,7 @@ export function InviteCard({ canManage, onInviteSuccess }: InviteCardProps) {
         return;
       }
 
+      setEmail("");
       setKinship("conjuge");
       setRole("membro");
       setParticipatesInSplit(true);
@@ -49,11 +54,30 @@ export function InviteCard({ canManage, onInviteSuccess }: InviteCardProps) {
     >
       <h2 className="title">Convidar membro</h2>
 
-      {error && (
-        <span className="cc-field__hint cc-field__hint--error" role="alert">
-          {error}
+      <label className="cc-field" htmlFor={emailInputId}>
+        <span className="cc-field__label">Email</span>
+        <span className={`cc-input ${error ? "cc-input--error" : ""}`}>
+          <input
+            id={emailInputId}
+            className="cc-input__text"
+            type="email"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (error) setError(null);
+            }}
+            placeholder="nome@email.com"
+            disabled={!canManage || isPending}
+            aria-invalid={!!error}
+            aria-describedby={error ? errorId : undefined}
+          />
         </span>
-      )}
+        {error && (
+          <span id={errorId} className="cc-field__hint cc-field__hint--error" role="alert">
+            {error}
+          </span>
+        )}
+      </label>
 
       <label className="cc-field">
         <span className="cc-field__label">Parentesco</span>
@@ -99,11 +123,11 @@ export function InviteCard({ canManage, onInviteSuccess }: InviteCardProps) {
         variant="primary"
         disabled={!canManage || isPending}
       >
-        {isPending ? "Criando link..." : "Criar link de convite"}
+        {isPending ? "Enviando convite..." : "Enviar convite"}
       </Button>
 
       <span className="caption cc-muted">
-        O convite vale 7 dias e serve para uma pessoa. Mande o link por WhatsApp.
+        O convite vale 7 dias. Sem email configurado, o app mostra um link para você mandar por WhatsApp.
       </span>
     </form>
   );

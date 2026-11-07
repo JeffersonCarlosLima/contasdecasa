@@ -9,21 +9,31 @@ export function SenhaCard() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<{
+    currentPassword?: string;
+    newPassword?: string;
+    confirmPassword?: string;
+    general?: string;
+  }>({});
   const [success, setSuccess] = useState("");
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setError("");
+    setFieldErrors({});
     setSuccess("");
 
+    if (!currentPassword) {
+      setFieldErrors({ currentPassword: "A senha atual é obrigatória." });
+      return;
+    }
+
     if (newPassword.length < 8) {
-      setError("A nova senha deve ter pelo menos 8 caracteres.");
+      setFieldErrors({ newPassword: "A nova senha deve ter pelo menos 8 caracteres." });
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setError("A confirmação da nova senha não confere.");
+      setFieldErrors({ confirmPassword: "A confirmação da nova senha não confere." });
       return;
     }
 
@@ -37,7 +47,8 @@ export function SenhaCard() {
       });
 
       if (res?.error) {
-        setError(res.error.message || "Erro ao trocar a senha. Confira a senha atual.");
+        const msg = res.error.message || "Erro ao trocar a senha. Confira a senha atual.";
+        setFieldErrors({ currentPassword: msg });
         setLoading(false);
         return;
       }
@@ -47,7 +58,8 @@ export function SenhaCard() {
       setNewPassword("");
       setConfirmPassword("");
     } catch (err: unknown) {
-      setError((err as Error)?.message || "Erro ao trocar a senha. Confira a senha atual.");
+      const msg = (err as Error)?.message || "Erro ao trocar a senha. Confira a senha atual.";
+      setFieldErrors({ currentPassword: msg });
     } finally {
       setLoading(false);
     }
@@ -57,9 +69,9 @@ export function SenhaCard() {
     <section className="cc-card" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <h2 className="title">Senha</h2>
 
-      {error && (
+      {fieldErrors.general && (
         <div role="alert" className="cc-field__hint cc-field__hint--error">
-          {error}
+          {fieldErrors.general}
         </div>
       )}
 
@@ -76,7 +88,17 @@ export function SenhaCard() {
           placeholder="Sua senha atual"
           autoComplete="current-password"
           value={currentPassword}
-          onChange={(e) => setCurrentPassword(e.target.value)}
+          onChange={(e) => {
+            setCurrentPassword(e.target.value);
+            if (fieldErrors.currentPassword || fieldErrors.general) {
+              setFieldErrors((prev) => ({ ...prev, currentPassword: undefined, general: undefined }));
+            }
+          }}
+          error={
+            fieldErrors.currentPassword ? (
+              <span role="alert">{fieldErrors.currentPassword}</span>
+            ) : undefined
+          }
           required
         />
         <Field
@@ -85,7 +107,17 @@ export function SenhaCard() {
           placeholder="Nova senha"
           autoComplete="new-password"
           value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
+          onChange={(e) => {
+            setNewPassword(e.target.value);
+            if (fieldErrors.newPassword) {
+              setFieldErrors((prev) => ({ ...prev, newPassword: undefined }));
+            }
+          }}
+          error={
+            fieldErrors.newPassword ? (
+              <span role="alert">{fieldErrors.newPassword}</span>
+            ) : undefined
+          }
           required
         />
         <Field
@@ -94,7 +126,17 @@ export function SenhaCard() {
           placeholder="Confirme a nova senha"
           autoComplete="new-password"
           value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
+          onChange={(e) => {
+            setConfirmPassword(e.target.value);
+            if (fieldErrors.confirmPassword) {
+              setFieldErrors((prev) => ({ ...prev, confirmPassword: undefined }));
+            }
+          }}
+          error={
+            fieldErrors.confirmPassword ? (
+              <span role="alert">{fieldErrors.confirmPassword}</span>
+            ) : undefined
+          }
           required
         />
         <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4 }}>
