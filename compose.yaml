@@ -13,7 +13,7 @@ services:
     environment:
       NODE_ENV: production
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/entrar >/dev/null 2>&1 || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health >/dev/null 2>&1 || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 5
