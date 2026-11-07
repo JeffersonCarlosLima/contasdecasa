@@ -6,12 +6,22 @@ import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
 import { Button, Field, SegmentedControl } from "@/components/ui";
 
-export interface AuthFormProps {
-  mode: "entrar" | "cadastro";
+export function isValidInviteToken(token?: string | null): token is string {
+  if (!token) return false;
+  return /^[A-Za-z0-9_-]+$/.test(token);
 }
 
-export function AuthForm({ mode }: AuthFormProps) {
+export interface AuthFormProps {
+  mode: "entrar" | "cadastro";
+  inviteToken?: string;
+}
+
+export function AuthForm({ mode, inviteToken }: AuthFormProps) {
   const router = useRouter();
+
+  const validToken = isValidInviteToken(inviteToken) ? inviteToken : null;
+  const targetUrl = validToken ? `/convite/${validToken}` : "/";
+  const conviteQuery = validToken ? `?convite=${encodeURIComponent(validToken)}` : "";
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -44,7 +54,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           return;
         }
 
-        router.push("/");
+        router.push(targetUrl);
       } else {
         const res = await authClient.signUp.email({
           name,
@@ -63,7 +73,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           return;
         }
 
-        router.push("/");
+        router.push(targetUrl);
       }
     } catch (err: unknown) {
       const maybeStatus = (err as { status?: number; statusCode?: number })?.status ??
@@ -89,7 +99,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         value={mode}
         onChange={(val) => {
           if (val !== mode) {
-            router.push(val === "entrar" ? "/entrar" : "/cadastro");
+            router.push(val === "entrar" ? `/entrar${conviteQuery}` : `/cadastro${conviteQuery}`);
           }
         }}
         style={{ alignSelf: "flex-start" }}
@@ -230,14 +240,14 @@ export function AuthForm({ mode }: AuthFormProps) {
       {mode === "entrar" ? (
         <span className="body cc-muted">
           Primeira vez aqui?{" "}
-          <Link href="/cadastro">
+          <Link href={`/cadastro${conviteQuery}`}>
             <strong>Crie sua conta e sua família</strong>
           </Link>
         </span>
       ) : (
         <span className="body cc-muted">
           Já tem uma conta?{" "}
-          <Link href="/entrar">
+          <Link href={`/entrar${conviteQuery}`}>
             <strong>Entrar</strong>
           </Link>
         </span>

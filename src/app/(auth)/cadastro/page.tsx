@@ -5,6 +5,13 @@ export const metadata: Metadata = {
   title: "Criar conta — Contas da Casa",
 };
 
-export default function CadastroPage() {
-  return <AuthForm mode="cadastro" />;
+interface CadastroPageProps {
+  searchParams?: Promise<{ convite?: string }>;
+}
+
+export default async function CadastroPage({ searchParams }: CadastroPageProps) {
+  const sp = searchParams ? await searchParams : undefined;
+  const convite = typeof sp?.convite === "string" ? sp.convite : undefined;
+
+  return <AuthForm mode="cadastro" inviteToken={convite} />;
 }
