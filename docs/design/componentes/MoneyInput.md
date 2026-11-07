@@ -10,3 +10,4 @@ Campo de valor em reais com prefixo R$, rótulo, dica e estado de erro; a mesma 
 - Guarde e envie centavos inteiros ao banco; nunca float.
 - Rótulo sempre visível acima do campo, não como placeholder.
 - Mensagem de erro diz o que fazer: "Informe um valor maior que zero."
+- O elemento `<input>` interno preenche 100% da altura da moldura (`height: 100%`), garantindo que o toque em qualquer ponto da caixa (`cc-input`, 44px) transfira imediatamente o foco ao campo.

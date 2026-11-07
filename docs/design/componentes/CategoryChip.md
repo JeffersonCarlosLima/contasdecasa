@@ -9,3 +9,4 @@ Chip de categoria com ponto colorido, usado para filtrar a lista e escolher a ca
 - A cor da categoria é a mesma em chips, linhas e gráficos.
 - Mais de seis categorias: as de menor gasto se agrupam em "Outras" (`chart-6`) nos gráficos; nos chips todas aparecem.
 - Selecionado usa `brand-soft` com borda `brand`, nunca a cor da categoria.
+- **Comportamento mobile:** No celular (`@media (max-width: 760px), (max-height: 500px) and (orientation: landscape) and (pointer: coarse)`), `cc-chip` garante altura mínima de 40px (`min-height: 40px`) para toque acessível.

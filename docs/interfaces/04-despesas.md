@@ -8,6 +8,15 @@ Protótipo: `docs/design/telas/Despesas.dc.html`.
 - Apoio `body cc-muted`: "{n} lançamentos · R$ {total} · R$ {pendente} pendentes".
 - Direita: `MonthSwitcher` e botão primário **"Lançar despesa"** (`cc-hide-sm`; no celular vale o botão central da barra).
 
+## Aviso pós-importação (`?mes=YYYY-MM&lote=<id>`)
+
+Quando a tela é aberta após a confirmação de um lote de importação (com parâmetros `mes=YYYY-MM&lote=<id>`):
+- Banner no topo (estilo `cc-card` ou `var(--surface-raised)`, `role="status"`):
+  - Informa a quantidade de despesas criadas no mês exibido (ex.: "{n} despesas importadas neste mês").
+  - Se houver despesas criadas em outros meses da fatura/extrato, lista esses outros meses com link/atalho direto para cada um (ex.: "Outras {m} despesas em {mês}").
+  - Informa a quantidade de receitas e salários enviados para a composição da renda em `/mes` (com link direto para `/mes?mes=YYYY-MM`).
+- O aviso pode ser fechado/dispensado pelo usuário e não impede a filtragem normal da lista.
+
 ## Filtros
 
 1. Linha 1: controle segmentado **Por pessoa | Por data** (padrão: Por pessoa) à esquerda; à direita dois
