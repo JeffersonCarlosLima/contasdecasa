@@ -68,7 +68,11 @@ export function InviteCard({ canManage, onInviteSuccess }: InviteCardProps) {
             disabled={!canManage || isPending}
           />
         </span>
-        {error && <span className="cc-field__hint cc-field__hint--error">{error}</span>}
+        {error && (
+          <span className="cc-field__hint cc-field__hint--error" role="alert">
+            {error}
+          </span>
+        )}
       </label>
 
       <label className="cc-field">
@@ -100,7 +104,7 @@ export function InviteCard({ canManage, onInviteSuccess }: InviteCardProps) {
         </select>
       </label>
 
-      <label className="cc-check">
+      <label className="cc-check" style={{ minHeight: "40px", cursor: "pointer" }}>
         <input
           type="checkbox"
           checked={participatesInSplit}

@@ -181,7 +181,8 @@ export function FechamentoClient({ data, canManage }: FechamentoClientProps) {
 
       {feedback && (
         <div
-          role="alert"
+          role={feedback.type === "success" ? "status" : "alert"}
+          aria-live="polite"
           style={{
             padding: "var(--space-3) var(--space-4)",
             borderRadius: "var(--radius-md)",

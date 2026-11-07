@@ -181,7 +181,7 @@ export function SummaryAside({
                 size="sm"
                 onClick={onCopyRecurring}
                 disabled={isCopyingRecurring}
-                style={{ alignSelf: "flex-start" }}
+                style={{ alignSelf: "flex-start", minHeight: "40px" }}
               >
                 {isCopyingRecurring ? "Copiando..." : "Copiar recorrentes"}
               </Button>

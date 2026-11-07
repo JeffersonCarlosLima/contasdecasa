@@ -47,7 +47,10 @@ export function InvestCard({
         <button
           type="button"
           aria-pressed={mode === "valor"}
-          style={mode === "valor" ? { background: "var(--invest-soft)" } : undefined}
+          style={{
+            minHeight: "40px",
+            ...(mode === "valor" ? { background: "var(--invest-soft)" } : {}),
+          }}
           onClick={() => !readOnly && onModeChange("valor")}
           disabled={readOnly}
         >
@@ -56,7 +59,10 @@ export function InvestCard({
         <button
           type="button"
           aria-pressed={mode === "percentual"}
-          style={mode === "percentual" ? { background: "var(--invest-soft)" } : undefined}
+          style={{
+            minHeight: "40px",
+            ...(mode === "percentual" ? { background: "var(--invest-soft)" } : {}),
+          }}
           onClick={() => !readOnly && onModeChange("percentual")}
           disabled={readOnly}
         >

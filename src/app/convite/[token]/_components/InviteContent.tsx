@@ -85,6 +85,7 @@ export function InviteContent({ token, inviteData, sessionEmail }: InviteContent
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             <div
+              role="alert"
               style={{
                 padding: "var(--space-3)",
                 background: "var(--pending-soft)",

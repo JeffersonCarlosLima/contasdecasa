@@ -95,7 +95,7 @@ export function AddDependentModal({ isOpen, onClose, onSuccess }: AddDependentMo
           </select>
         </label>
 
-        <label className="cc-check">
+        <label className="cc-check" style={{ minHeight: "40px", cursor: "pointer" }}>
           <input
             type="checkbox"
             checked={participatesInSplit}

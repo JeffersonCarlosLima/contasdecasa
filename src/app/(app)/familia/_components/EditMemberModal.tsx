@@ -278,7 +278,7 @@ export function EditMemberModal({
         </div>
 
         {/* Participa da divisão */}
-        <label className="cc-check">
+        <label className="cc-check" style={{ minHeight: "40px", cursor: "pointer" }}>
           <input
             type="checkbox"
             checked={participatesInSplit}

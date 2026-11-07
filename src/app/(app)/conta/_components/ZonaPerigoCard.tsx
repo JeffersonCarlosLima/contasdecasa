@@ -126,6 +126,7 @@ export function ZonaPerigoCard({ eligibleMembers }: ZonaPerigoCardProps) {
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <select
                 className="cc-select"
+                style={{ height: "44px" }}
                 value={targetMemberId}
                 onChange={(e) => {
                   setTargetMemberId(e.target.value);

@@ -42,6 +42,7 @@ export function SplitRuleCard({
         <button
           type="button"
           aria-pressed={rule === "igual"}
+          style={{ minHeight: "40px" }}
           onClick={() => !readOnly && onRuleChange("igual")}
           disabled={readOnly}
         >
@@ -50,6 +51,7 @@ export function SplitRuleCard({
         <button
           type="button"
           aria-pressed={rule === "proporcional"}
+          style={{ minHeight: "40px" }}
           onClick={() => !readOnly && onRuleChange("proporcional")}
           disabled={readOnly}
         >
@@ -58,6 +60,7 @@ export function SplitRuleCard({
         <button
           type="button"
           aria-pressed={rule === "personalizada"}
+          style={{ minHeight: "40px" }}
           onClick={() => !readOnly && onRuleChange("personalizada")}
           disabled={readOnly}
         >

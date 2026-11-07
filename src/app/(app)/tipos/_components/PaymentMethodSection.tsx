@@ -258,6 +258,7 @@ export function PaymentMethodSection({
                       <button
                         type="button"
                         className="cc-btn cc-btn--ghost cc-btn--sm"
+                        style={{ minHeight: "40px" }}
                         onClick={() => handleStartEdit(pm)}
                       >
                         Editar
@@ -316,6 +317,7 @@ export function PaymentMethodSection({
                 <button
                   type="button"
                   aria-pressed={type === "cartao"}
+                  style={{ minHeight: "40px" }}
                   onClick={() => setType("cartao")}
                   disabled={isPending}
                 >
@@ -324,6 +326,7 @@ export function PaymentMethodSection({
                 <button
                   type="button"
                   aria-pressed={type === "conta"}
+                  style={{ minHeight: "40px" }}
                   onClick={() => setType("conta")}
                   disabled={isPending}
                 >
@@ -332,6 +335,7 @@ export function PaymentMethodSection({
                 <button
                   type="button"
                   aria-pressed={type === "pix"}
+                  style={{ minHeight: "40px" }}
                   onClick={() => setType("pix")}
                   disabled={isPending}
                 >
@@ -340,6 +344,7 @@ export function PaymentMethodSection({
                 <button
                   type="button"
                   aria-pressed={type === "dinheiro"}
+                  style={{ minHeight: "40px" }}
                   onClick={() => setType("dinheiro")}
                   disabled={isPending}
                 >
@@ -352,6 +357,7 @@ export function PaymentMethodSection({
               <span className="cc-field__label">Dono (opcional)</span>
               <select
                 className="cc-select"
+                style={{ height: "44px" }}
                 value={ownerMemberId ?? ""}
                 onChange={(e) => setOwnerMemberId(e.target.value || null)}
                 disabled={isPending}

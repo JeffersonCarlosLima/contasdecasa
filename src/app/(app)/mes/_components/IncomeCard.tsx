@@ -65,6 +65,7 @@ export function IncomeCard({
                     type="button"
                     variant="ghost"
                     size="sm"
+                    style={{ minHeight: "40px" }}
                     onClick={() =>
                       setRevealedDependents((prev) => ({ ...prev, [member.id]: true }))
                     }

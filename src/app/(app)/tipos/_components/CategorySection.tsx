@@ -155,6 +155,7 @@ export function CategorySection({
                   <button
                     type="button"
                     className="cc-btn cc-btn--ghost cc-btn--sm"
+                    style={{ minHeight: "40px" }}
                     onClick={() => handleStartEdit(cat)}
                   >
                     Editar
@@ -208,7 +209,7 @@ export function CategorySection({
 
           <div className="cc-field">
             <span className="cc-field__label">Cor</span>
-            <div className="cc-filters" role="radiogroup" aria-label="Cor">
+            <div className="cc-filters" role="group" aria-label="Cor">
               {COLOR_OPTIONS.map((opt) => (
                 <button
                   key={opt.color}
@@ -218,6 +219,7 @@ export function CategorySection({
                   aria-label={opt.label}
                   onClick={() => setColor(opt.color)}
                   disabled={isPending}
+                  style={{ minWidth: 40, minHeight: 40, justifyContent: "center" }}
                 >
                   <span
                     className="cc-chip__dot"
@@ -238,6 +240,7 @@ export function CategorySection({
               <button
                 type="button"
                 aria-pressed={nature === "fixa"}
+                style={{ minHeight: "40px" }}
                 onClick={() => setNature("fixa")}
                 disabled={isPending}
               >
@@ -246,6 +249,7 @@ export function CategorySection({
               <button
                 type="button"
                 aria-pressed={nature === "variavel"}
+                style={{ minHeight: "40px" }}
                 onClick={() => setNature("variavel")}
                 disabled={isPending}
               >
