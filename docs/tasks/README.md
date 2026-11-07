@@ -14,7 +14,7 @@ cadastros → fechamento → despesas → dashboard → Docker. Commits pequenos
 | 01 | [Schema e migrations](01-schema.md) | feito (revisar com o Jefferson) |
 | 02 | [Autenticação](02-auth.md) | feito (no ar) |
 | 03 | [Família e convites](03-familia-convites.md) | feito (no ar) |
-| 04 | [Cadastros: tipos e formas de pagamento](04-cadastros.md) | feito (no ar) |
+| 04 | [Cadastros: tipos e formas](04-cadastros.md) | feito (falta deploy) |
 | 05 | [Fechamento do mês](05-fechamento.md) | feito (no ar) |
 | 06 | [Despesas](06-despesas.md) | em andamento |
 | 07 | [Dashboard](07-dashboard.md) | em andamento |

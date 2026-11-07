@@ -26,3 +26,14 @@ negativa · parcelas atravessando o ano (dez → jan).
 
 O valor informado é o de **cada parcela**. Parcela N de T gera as parcelas N+1…T nos meses seguintes
 (mesmo grupo, mesmo valor, vencimento no mesmo dia, ajustado ao último dia do mês quando necessário).
+
+## Fatura de cartão de crédito
+
+Função pura `cardInvoice({ purchaseDate, closingDay, dueDay })` em `src/lib/card-invoice.ts`:
+- Compra com dia ≤ dia de fechamento entra na fatura que fecha no mesmo mês; dia > fechamento entra na fatura do mês seguinte.
+- Vencimento: se `due_day > closing_day`, ocorre no mesmo mês do fechamento; caso contrário (`due_day <= closing_day`), no mês seguinte.
+- Dia inexistente (ex.: 31 em abril, ou 29/30/31 em fevereiro) é ajustado ao último dia do mês.
+- `reference_month` = dia 1 do mês do vencimento (`YYYY-MM-01`).
+- `due_date` = data calculada do vencimento (`YYYY-MM-DD`).
+- Aplicação: confirmação da importação (se a forma for cartão com fechamento/vencimento) e como sugestão no formulário de despesa. Cartão sem dias mantém comportamento padrão.
+

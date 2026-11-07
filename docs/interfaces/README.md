@@ -45,7 +45,7 @@ formato, tamanho e hierarquia.
 ## Casca do app (todas as telas autenticadas)
 
 **Menu lateral (desktop):** logo "Contas da Casa" (display 22px) · nav: Dashboard, Despesas,
-Fechamento do mês, Tipos de despesa, Família (item ativo com `brand-soft`/`brand-ink`) ·
+Fechamento do mês, Tipos e formas, Família (item ativo com `brand-soft`/`brand-ink`) ·
 botão primário "Lançar despesa" · rodapé: avatar da pessoa, nome, "{Família} · {n} membros".
 Na tela "Lançar despesa" o botão primário do menu não aparece.
 
@@ -62,7 +62,7 @@ Na tela "Lançar despesa" não há barra inferior; o cabeçalho tem botão "Volt
 | Despesas | `/despesas` | [04-despesas.md](04-despesas.md) | `Despesas.dc.html` |
 | Lançar despesa | `/despesas/nova`, `/despesas/[id]` | [05-lancar-despesa.md](05-lancar-despesa.md) | `NovaDespesa.dc.html` |
 | Fechamento do mês | `/mes` | [06-fechamento.md](06-fechamento.md) | `Fechamento.dc.html` |
-| Tipos de despesa | `/tipos` | [07-tipos-de-despesa.md](07-tipos-de-despesa.md) | `Categorias.dc.html` |
+| Tipos e formas | `/tipos` | [07-tipos-de-despesa.md](07-tipos-de-despesa.md) | `Categorias.dc.html` |
 | Família e membros | `/familia` | [08-familia.md](08-familia.md) | `Familia.dc.html` |
 
 Telas sem protótipo (`/convite/[token]`, `/conta`): seguir a mesma casca, componentes e textos de

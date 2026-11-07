@@ -14,7 +14,9 @@ Implementação: `src/db/schema/*.ts`. Chaves `uuid`, `created_at`/`updated_at` 
 - **categories** (tipos de despesa): família, nome, cor (`chart-1…6`), natureza (`fixa|variavel`),
   `monthly_limit_cents` opcional, `archived`.
 - **payment_methods**: família, nome (Nubank, Bradesco, Pix…), tipo (`cartao|conta|pix|dinheiro`),
-  membro dono opcional.
+  membro dono opcional, `archived` (boolean, default false), `card_last4` (texto de 4 dígitos, opcional, só tipo `cartao`),
+  `closing_day` (smallint 1..31, opcional, só tipo `cartao`), `due_day` (smallint 1..31, opcional, só tipo `cartao`;
+  ambos preenchidos ou ambos nulos).
 - **monthly_periods**: família, `month` (sempre dia 1), modo do investimento (`valor|percentual`), valor ou
   percentual, destino do investimento, regra de divisão do mês (null = padrão da família), `closed_at`/`closed_by`.
   Único (família, mês).

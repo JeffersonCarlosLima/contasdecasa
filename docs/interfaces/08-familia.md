@@ -30,7 +30,7 @@ pendente. Todos veem os lançamentos de todos; cada um lança as próprias despe
   app mostra um link para você mandar por WhatsApp."
 - Card **"Dependente sem login"**: texto "Para filhos ou quem não vai usar o app. As despesas dele ficam
   separadas, e você escolhe se ele entra na divisão." + botão secundário **"Adicionar dependente"**.
-- Celular: botão secundário **"Tipos de despesa"** (→ `/tipos`).
+- Celular: botão secundário **"Tipos e formas"** (→ `/tipos`).
 
 ## Editar membro (modal/painel `shadow-pop`)
 
