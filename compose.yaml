@@ -1,14 +1,23 @@
-# Só o app (porta 3000). O Postgres é externo: informe DATABASE_URL no .env.
+# Só o app. O Postgres é externo: informe DATABASE_URL no .env.
+# Porta só em 127.0.0.1: o acesso público passa pelo Cloudflare Tunnel. APP_PORT no .env (padrão 3000).
 services:
   app:
     build: .
     image: contas-da-casa:latest
+    container_name: contasdecasa-app
+    init: true
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "127.0.0.1:${APP_PORT:-3000}:3000"
     env_file: .env
     environment:
       NODE_ENV: production
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/entrar >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # Uso pontual: docker compose run --rm migrate
   migrate:
