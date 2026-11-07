@@ -64,6 +64,7 @@ describe("family-queries", () => {
       ];
       const mockInvites = [
         { id: "inv_1", email: "conjuge@teste.com", acceptedAt: null },
+        { id: "inv_2", email: null, acceptedAt: null },
       ];
 
       vi.mocked(db.select)
@@ -111,6 +112,40 @@ describe("family-queries", () => {
 
       const result = await findInviteByToken("tok_invalido");
       expect(result).toBeNull();
+    });
+
+    it("retorna invite com email null quando for link sem email", async () => {
+      const mockInviteRow = {
+        invite: {
+          id: "inv_link_sem_email",
+          email: null,
+          role: "membro",
+          familyId: "fam_123",
+          tokenHash: "hash_tok_link",
+        },
+        familyName: "Família Lima",
+        invitedByName: "Jefferson",
+      };
+
+      vi.mocked(db.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          innerJoin: vi.fn().mockReturnValue({
+            innerJoin: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue([mockInviteRow]),
+              }),
+            }),
+          }),
+        }),
+      } as unknown as ReturnType<typeof db.select>);
+
+      const result = await findInviteByToken("tok_link");
+      expect(result).toEqual({
+        invite: mockInviteRow.invite,
+        familyName: "Família Lima",
+        invitedByName: "Jefferson",
+      });
+      expect(result?.invite.email).toBeNull();
     });
 
     it("retorna invite, familyName e invitedByName quando o convite for válido", async () => {

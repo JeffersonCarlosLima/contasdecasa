@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import { db } from "@/db";
-import { familyInvites } from "@/db/schema";
+import { familyInvites, familyMembers } from "@/db/schema";
 import { joinFamilyFromInvite } from "@/lib/family-join";
 import { hashInviteToken } from "@/lib/invites";
 import { requireSession } from "@/lib/session";
@@ -45,11 +45,22 @@ export async function acceptInvite(token: string): Promise<ActionResult> {
     };
   }
 
-  // Exige sessão com o MESMO email do convite
-  if (session.user.email.toLowerCase() !== invite.email.toLowerCase()) {
+  // Usuário que já é membro ativo de OUTRA família não pode aceitar
+  const [existingMembership] = await db
+    .select({ familyId: familyMembers.familyId })
+    .from(familyMembers)
+    .where(
+      and(
+        eq(familyMembers.userId, session.user.id),
+        eq(familyMembers.status, "ativo")
+      )
+    )
+    .limit(1);
+
+  if (existingMembership && existingMembership.familyId !== invite.familyId) {
     return {
       ok: false,
-      error: "Este convite foi enviado para outro endereço de email. Faça login com o email correspondente.",
+      error: "Você já participa de outra família.",
     };
   }
 

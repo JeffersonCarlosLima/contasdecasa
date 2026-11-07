@@ -80,7 +80,8 @@ describe("convite actions", () => {
       expect(redirect).not.toHaveBeenCalled();
     });
 
-    it("rejeita se o email da sessão for diferente do email do convite", async () => {
+    it("rejeita se o usuário já for membro ativo de outra família", async () => {
+      // 1. SELECT do convite
       vi.mocked(db.select).mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
@@ -98,12 +99,95 @@ describe("convite actions", () => {
         }),
       } as unknown as ReturnType<typeof db.select>);
 
+      // 2. SELECT de membro ativo em outra família
+      vi.mocked(db.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([
+              {
+                familyId: "fam_outra",
+              },
+            ]),
+          }),
+        }),
+      } as unknown as ReturnType<typeof db.select>);
+
       const result = await acceptInvite("tok_valido");
       expect(result).toEqual({
         ok: false,
-        error: "Este convite foi enviado para outro endereço de email. Faça login com o email correspondente.",
+        error: "Você já participa de outra família.",
       });
       expect(redirect).not.toHaveBeenCalled();
+    });
+
+    it("aceita convite mesmo se o email da sessão for diferente do email do convite", async () => {
+      const mockInvite = {
+        id: "inv_1",
+        email: "outro_email@exemplo.com",
+        familyId: "fam_1",
+        role: "membro" as const,
+        kinship: "conjuge" as const,
+        participatesInSplit: true,
+      };
+
+      // 1. SELECT do convite
+      vi.mocked(db.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([mockInvite]),
+          }),
+        }),
+      } as unknown as ReturnType<typeof db.select>);
+
+      // 2. SELECT de membro ativo (sem outra família)
+      vi.mocked(db.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([]),
+          }),
+        }),
+      } as unknown as ReturnType<typeof db.select>);
+
+      await expect(acceptInvite("tok_valido")).rejects.toThrow("NEXT_REDIRECT:/");
+
+      expect(redirect).toHaveBeenCalledWith("/");
+      expect(db.transaction).toHaveBeenCalled();
+      expect(joinFamilyFromInvite).toHaveBeenCalledWith(expect.anything(), mockUser, mockInvite);
+    });
+
+    it("aceita convite quando for link sem email (email null)", async () => {
+      const mockInvite = {
+        id: "inv_link",
+        email: null,
+        familyId: "fam_1",
+        role: "membro" as const,
+        kinship: "outro" as const,
+        participatesInSplit: true,
+      };
+
+      // 1. SELECT do convite
+      vi.mocked(db.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([mockInvite]),
+          }),
+        }),
+      } as unknown as ReturnType<typeof db.select>);
+
+      // 2. SELECT de membro ativo (sem outra família)
+      vi.mocked(db.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([]),
+          }),
+        }),
+      } as unknown as ReturnType<typeof db.select>);
+
+      await expect(acceptInvite("tok_link")).rejects.toThrow("NEXT_REDIRECT:/");
+
+      expect(redirect).toHaveBeenCalledWith("/");
+      expect(db.transaction).toHaveBeenCalled();
+      expect(joinFamilyFromInvite).toHaveBeenCalledWith(expect.anything(), mockUser, mockInvite);
     });
 
     it("aceita o convite com sucesso via joinFamilyFromInvite e redireciona para /", async () => {
@@ -116,10 +200,20 @@ describe("convite actions", () => {
         participatesInSplit: true,
       };
 
+      // 1. SELECT do convite
       vi.mocked(db.select).mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
             limit: vi.fn().mockResolvedValue([mockInvite]),
+          }),
+        }),
+      } as unknown as ReturnType<typeof db.select>);
+
+      // 2. SELECT de membro ativo
+      vi.mocked(db.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([]),
           }),
         }),
       } as unknown as ReturnType<typeof db.select>);
