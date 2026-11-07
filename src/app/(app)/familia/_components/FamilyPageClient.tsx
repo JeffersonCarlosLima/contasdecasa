@@ -133,7 +133,7 @@ export function FamilyPageClient({
             href="/tipos"
             style={{ textDecoration: "none" }}
           >
-            Tipos de despesa
+            Tipos e formas
           </a>
         </aside>
       </div>

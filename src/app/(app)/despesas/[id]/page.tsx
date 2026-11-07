@@ -24,7 +24,7 @@ export default async function EditDespesaPage({ params }: EditDespesaPageProps) 
   const [expense, categories, paymentMethods, familyData, [familyRow]] = await Promise.all([
     getExpense(familyId, id),
     listCategories(familyId),
-    listPaymentMethods(familyId),
+    listPaymentMethods(familyId, { includeArchived: true }),
     listFamily(familyId),
     db
       .select({ defaultSplitRule: families.defaultSplitRule })
@@ -35,6 +35,29 @@ export default async function EditDespesaPage({ params }: EditDespesaPageProps) 
 
   if (!expense) {
     notFound();
+  }
+
+  const paymentMethodsList = paymentMethods.map((pm) => ({
+    id: pm.id,
+    name: pm.name,
+    type: pm.type,
+    archived: pm.archived,
+    closingDay: pm.closingDay,
+    dueDay: pm.dueDay,
+  }));
+
+  if (
+    expense.paymentMethod &&
+    !paymentMethodsList.some((pm) => pm.id === expense.paymentMethod!.id)
+  ) {
+    paymentMethodsList.push({
+      id: expense.paymentMethod.id,
+      name: expense.paymentMethod.name,
+      type: "conta",
+      archived: true,
+      closingDay: null,
+      dueDay: null,
+    });
   }
 
   const canEdit =
@@ -61,10 +84,7 @@ export default async function EditDespesaPage({ params }: EditDespesaPageProps) 
             name: c.name,
             color: c.color,
           }))}
-          paymentMethods={paymentMethods.map((pm) => ({
-            id: pm.id,
-            name: pm.name,
-          }))}
+          paymentMethods={paymentMethodsList}
           members={familyData.members.map((m) => ({
             id: m.id,
             displayName: m.displayName,

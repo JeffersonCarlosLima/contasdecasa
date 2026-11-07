@@ -34,7 +34,7 @@ describe("nav-utils", () => {
       expect(isRouteActive("/despesas", "/mes")).toBe(false);
     });
 
-    it("deve marcar Tipos de despesa em /tipos", () => {
+    it("deve marcar Tipos e formas em /tipos", () => {
       expect(isRouteActive("/tipos", "/tipos")).toBe(true);
       expect(isRouteActive("/tipos/nova", "/tipos")).toBe(true);
       expect(isRouteActive("/familia", "/tipos")).toBe(false);
@@ -86,7 +86,7 @@ describe("nav-utils", () => {
       expect(getMobileHeaderTitle("/importar")).toBe("Importar extrato");
       expect(getMobileHeaderTitle("/importar/historico")).toBe("Importar extrato");
       expect(getMobileHeaderTitle("/mes")).toBe("Fechamento");
-      expect(getMobileHeaderTitle("/tipos")).toBe("Tipos de despesa");
+      expect(getMobileHeaderTitle("/tipos")).toBe("Tipos e formas");
       expect(getMobileHeaderTitle("/familia")).toBe("Família");
       expect(getMobileHeaderTitle("/conta")).toBe("Minha conta");
       expect(getMobileHeaderTitle("/desconhecido")).toBe("Contas da Casa");

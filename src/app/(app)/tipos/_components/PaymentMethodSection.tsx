@@ -2,7 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { deletePaymentMethod, savePaymentMethod } from "../actions";
+import { Banknote, CreditCard, Landmark, QrCode } from "lucide-react";
+import { SegmentedControl } from "@/components/ui";
+import { savePaymentMethod, setPaymentMethodArchived } from "../actions";
 import type {
   ActionResponse,
   FamilyMemberItem,
@@ -13,84 +15,43 @@ import type {
 import { PAYMENT_TYPE_LABELS } from "./types";
 
 function PaymentMethodIcon({ type }: { type: PaymentMethodType }) {
-  if (type === "cartao") {
-    return (
-      <svg
-        width="18"
-        height="18"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        <rect x="2" y="5" width="20" height="14" rx="2" />
-        <line x1="2" y1="10" x2="22" y2="10" />
-      </svg>
-    );
+  const iconProps = {
+    width: 18,
+    height: 18,
+    strokeWidth: 1.75,
+    "aria-hidden": true as const,
+  };
+
+  switch (type) {
+    case "cartao":
+      return <CreditCard {...iconProps} />;
+    case "conta":
+      return <Landmark {...iconProps} />;
+    case "pix":
+      return <QrCode {...iconProps} />;
+    case "dinheiro":
+      return <Banknote {...iconProps} />;
+    default:
+      return <Landmark {...iconProps} />;
   }
-  if (type === "pix") {
-    return (
-      <svg
-        width="18"
-        height="18"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        <rect x="3" y="3" width="7" height="7" rx="1" />
-        <rect x="14" y="3" width="7" height="7" rx="1" />
-        <rect x="3" y="14" width="7" height="7" rx="1" />
-        <rect x="14" y="14" width="7" height="7" rx="1" />
-      </svg>
-    );
+}
+
+function formatPaymentMethodMeta(
+  item: PaymentMethodItem,
+  memberMap: Map<string, string>
+): string {
+  const typeLabel =
+    PAYMENT_TYPE_LABELS[item.type as PaymentMethodType] ?? item.type;
+  const ownerLabel =
+    item.ownerMemberId && memberMap.get(item.ownerMemberId)
+      ? memberMap.get(item.ownerMemberId)!
+      : "Família";
+
+  if (item.type === "cartao" && item.cardLast4) {
+    return `${typeLabel} •••• ${item.cardLast4} · ${ownerLabel}`;
   }
-  if (type === "dinheiro") {
-    return (
-      <svg
-        width="18"
-        height="18"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        <rect x="2" y="6" width="20" height="12" rx="2" />
-        <circle cx="12" cy="12" r="2" />
-        <line x1="6" y1="12" x2="6.01" y2="12" />
-        <line x1="18" y1="12" x2="18.01" y2="12" />
-      </svg>
-    );
-  }
-  // conta bancária padrão
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <line x1="3" y1="21" x2="21" y2="21" />
-      <line x1="4" y1="10" x2="4" y2="18" />
-      <line x1="12" y1="10" x2="12" y2="18" />
-      <line x1="20" y1="10" x2="20" y2="18" />
-      <polygon points="12 3 2 8 22 8 12 3" />
-    </svg>
-  );
+
+  return `${typeLabel} · ${ownerLabel}`;
 }
 
 export interface PaymentMethodSectionProps {
@@ -98,7 +59,8 @@ export interface PaymentMethodSectionProps {
   members: FamilyMemberItem[];
   canEdit: boolean;
   onSave?: (input: SavePaymentMethodInput) => Promise<ActionResponse>;
-  onDelete?: (id: string) => Promise<ActionResponse>;
+  onArchive?: (id: string) => Promise<ActionResponse>;
+  onReactivate?: (id: string) => Promise<ActionResponse>;
 }
 
 export function PaymentMethodSection({
@@ -106,7 +68,8 @@ export function PaymentMethodSection({
   members,
   canEdit,
   onSave,
-  onDelete,
+  onArchive,
+  onReactivate,
 }: PaymentMethodSectionProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -116,6 +79,9 @@ export function PaymentMethodSection({
   const [name, setName] = useState("");
   const [type, setType] = useState<PaymentMethodType>("cartao");
   const [ownerMemberId, setOwnerMemberId] = useState<string | null>(null);
+  const [cardLast4, setCardLast4] = useState("");
+  const [closingDay, setClosingDay] = useState("");
+  const [dueDay, setDueDay] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const memberMap = new Map<string, string>();
@@ -123,11 +89,19 @@ export function PaymentMethodSection({
     memberMap.set(m.id, m.displayName);
   }
 
+  const activeMembers = members.filter((m) => m.status === "ativo");
+
+  const activeMethods = paymentMethods.filter((pm) => !pm.archived);
+  const archivedMethods = paymentMethods.filter((pm) => pm.archived);
+
   function resetForm() {
     setEditingMethod(null);
     setName("");
     setType("cartao");
     setOwnerMemberId(null);
+    setCardLast4("");
+    setClosingDay("");
+    setDueDay("");
     setErrorMessage(null);
   }
 
@@ -136,6 +110,9 @@ export function PaymentMethodSection({
     setName(item.name);
     setType(item.type as PaymentMethodType);
     setOwnerMemberId(item.ownerMemberId ?? null);
+    setCardLast4(item.cardLast4 ?? "");
+    setClosingDay(item.closingDay ? String(item.closingDay) : "");
+    setDueDay(item.dueDay ? String(item.dueDay) : "");
     setErrorMessage(null);
   }
 
@@ -148,6 +125,9 @@ export function PaymentMethodSection({
       name: name.trim(),
       type,
       ownerMemberId: ownerMemberId || null,
+      cardLast4: type === "cartao" && cardLast4 ? cardLast4.trim() : null,
+      closingDay: type === "cartao" && closingDay ? Number(closingDay) : null,
+      dueDay: type === "cartao" && dueDay ? Number(dueDay) : null,
     };
 
     startTransition(async () => {
@@ -173,19 +153,22 @@ export function PaymentMethodSection({
     });
   }
 
-  async function handleDelete() {
+  async function handleArchive() {
     if (!editingMethod) return;
     setErrorMessage(null);
 
     startTransition(async () => {
       try {
-        const res: ActionResponse = onDelete
-          ? await onDelete(editingMethod.id)
-          : await deletePaymentMethod({ id: editingMethod.id });
+        const res: ActionResponse = onArchive
+          ? await onArchive(editingMethod.id)
+          : await setPaymentMethodArchived({
+              id: editingMethod.id,
+              archived: true,
+            });
 
         if (!res.ok) {
           setErrorMessage(
-            res.error || "Não foi possível excluir a forma de pagamento."
+            res.error || "Não foi possível arquivar a forma de pagamento."
           );
           return;
         }
@@ -194,14 +177,42 @@ export function PaymentMethodSection({
         router.refresh();
       } catch (err) {
         setErrorMessage(
-          err instanceof Error ? err.message : "Erro inesperado ao excluir."
+          err instanceof Error ? err.message : "Erro inesperado ao arquivar."
+        );
+      }
+    });
+  }
+
+  async function handleReactivate(id: string) {
+    setErrorMessage(null);
+
+    startTransition(async () => {
+      try {
+        const res: ActionResponse = onReactivate
+          ? await onReactivate(id)
+          : await setPaymentMethodArchived({
+              id,
+              archived: false,
+            });
+
+        if (!res.ok) {
+          setErrorMessage(
+            res.error || "Não foi possível reativar a forma de pagamento."
+          );
+          return;
+        }
+
+        router.refresh();
+      } catch (err) {
+        setErrorMessage(
+          err instanceof Error ? err.message : "Erro inesperado ao reativar."
         );
       }
     });
   }
 
   return (
-    <section aria-labelledby="formas-pagamento-title">
+    <section id="formas" aria-labelledby="formas-pagamento-title">
       <div className="cc-top" style={{ marginTop: "var(--space-8)" }}>
         <div className="cc-top__titles">
           <h2 id="formas-pagamento-title" className="title">
@@ -226,21 +237,19 @@ export function PaymentMethodSection({
           className="cc-list"
           style={{ flex: "999 1 520px", minWidth: 0 }}
           role="region"
-          aria-label="Formas de pagamento cadastradas"
+          aria-label="Formas cadastradas"
         >
           {paymentMethods.length === 0 ? (
             <div
               style={{ padding: "var(--space-4)", textAlign: "center" }}
               className="body cc-muted"
             >
-              Nenhuma forma de pagamento cadastrada.
+              Cadastre o cartão ou a conta que aparece no seu extrato para poder
+              importar e lançar despesas.
             </div>
           ) : (
-            paymentMethods.map((pm) => {
-              const ownerName = pm.ownerMemberId
-                ? memberMap.get(pm.ownerMemberId)
-                : null;
-              return (
+            <>
+              {activeMethods.map((pm) => (
                 <div key={pm.id} className="cc-expense">
                   <div className="cc-expense__icon">
                     <PaymentMethodIcon type={pm.type as PaymentMethodType} />
@@ -248,9 +257,7 @@ export function PaymentMethodSection({
                   <div className="cc-expense__main">
                     <span className="cc-expense__title">{pm.name}</span>
                     <span className="cc-expense__meta">
-                      {PAYMENT_TYPE_LABELS[pm.type as PaymentMethodType] ??
-                        pm.type}
-                      {ownerName && <> · {ownerName}</>}
+                      {formatPaymentMethodMeta(pm, memberMap)}
                     </span>
                   </div>
                   {canEdit && (
@@ -266,8 +273,54 @@ export function PaymentMethodSection({
                     </div>
                   )}
                 </div>
-              );
-            })
+              ))}
+
+              {archivedMethods.length > 0 && (
+                <div style={{ marginTop: "var(--space-4)" }}>
+                  <div
+                    className="caption cc-muted"
+                    style={{
+                      padding: "var(--space-2) var(--space-3)",
+                      fontWeight: "var(--font-medium)",
+                    }}
+                  >
+                    Arquivadas
+                  </div>
+                  {archivedMethods.map((pm) => (
+                    <div
+                      key={pm.id}
+                      className="cc-expense"
+                      style={{ opacity: 0.65 }}
+                    >
+                      <div className="cc-expense__icon">
+                        <PaymentMethodIcon
+                          type={pm.type as PaymentMethodType}
+                        />
+                      </div>
+                      <div className="cc-expense__main">
+                        <span className="cc-expense__title">{pm.name}</span>
+                        <span className="cc-expense__meta">
+                          {formatPaymentMethodMeta(pm, memberMap)} (Arquivada)
+                        </span>
+                      </div>
+                      {canEdit && (
+                        <div className="cc-expense__side">
+                          <button
+                            type="button"
+                            className="cc-btn cc-btn--ghost cc-btn--sm"
+                            style={{ minHeight: "40px" }}
+                            onClick={() => handleReactivate(pm.id)}
+                            disabled={isPending}
+                          >
+                            Reativar
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -284,7 +337,9 @@ export function PaymentMethodSection({
             onSubmit={handleSubmit}
           >
             <h3 className="title">
-              {editingMethod ? "Editar forma" : "Nova forma"}
+              {editingMethod
+                ? "Editar forma de pagamento"
+                : "Nova forma de pagamento"}
             </h3>
 
             {errorMessage && (
@@ -304,7 +359,7 @@ export function PaymentMethodSection({
                   className="cc-input__text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Ex.: Nubank, Carteira..."
+                  placeholder="Ex.: Nubank"
                   required
                   disabled={isPending}
                 />
@@ -313,48 +368,21 @@ export function PaymentMethodSection({
 
             <div className="cc-field">
               <span className="cc-field__label">Tipo</span>
-              <div className="cc-seg" role="group" aria-label="Tipo de pagamento">
-                <button
-                  type="button"
-                  aria-pressed={type === "cartao"}
-                  style={{ minHeight: "40px" }}
-                  onClick={() => setType("cartao")}
-                  disabled={isPending}
-                >
-                  Cartão
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={type === "conta"}
-                  style={{ minHeight: "40px" }}
-                  onClick={() => setType("conta")}
-                  disabled={isPending}
-                >
-                  Conta
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={type === "pix"}
-                  style={{ minHeight: "40px" }}
-                  onClick={() => setType("pix")}
-                  disabled={isPending}
-                >
-                  Pix
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={type === "dinheiro"}
-                  style={{ minHeight: "40px" }}
-                  onClick={() => setType("dinheiro")}
-                  disabled={isPending}
-                >
-                  Dinheiro
-                </button>
-              </div>
+              <SegmentedControl
+                options={[
+                  { value: "cartao", label: "Cartão" },
+                  { value: "conta", label: "Conta" },
+                  { value: "pix", label: "Pix" },
+                  { value: "dinheiro", label: "Dinheiro" },
+                ]}
+                value={type}
+                onChange={(val) => setType(val as PaymentMethodType)}
+                disabled={isPending}
+              />
             </div>
 
             <label className="cc-field">
-              <span className="cc-field__label">Dono (opcional)</span>
+              <span className="cc-field__label">Dono</span>
               <select
                 className="cc-select"
                 style={{ height: "44px" }}
@@ -362,17 +390,82 @@ export function PaymentMethodSection({
                 onChange={(e) => setOwnerMemberId(e.target.value || null)}
                 disabled={isPending}
               >
-                <option value="">Família toda (compartilhado)</option>
-                {members.map((m) => (
+                <option value="">Família</option>
+                {activeMembers.map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.displayName}
                   </option>
                 ))}
               </select>
-              <span className="cc-field__hint">
-                Deixe compartilhado se qualquer membro puder usar.
-              </span>
             </label>
+
+            {type === "cartao" && (
+              <>
+                <label className="cc-field">
+                  <span className="cc-field__label">Final do cartão</span>
+                  <span className="cc-input">
+                    <input
+                      className="cc-input__text"
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={4}
+                      pattern="[0-9]{4}"
+                      value={cardLast4}
+                      onChange={(e) =>
+                        setCardLast4(
+                          e.target.value.replace(/\D/g, "").slice(0, 4)
+                        )
+                      }
+                      placeholder="Ex.: 1234"
+                      disabled={isPending}
+                    />
+                  </span>
+                  <span className="cc-field__hint">
+                    4 dígitos para identificar nos extratos.
+                  </span>
+                </label>
+
+                <div style={{ display: "flex", gap: "var(--space-3)" }}>
+                  <label className="cc-field" style={{ flex: 1, minWidth: 0 }}>
+                    <span className="cc-field__label">Dia de fechamento</span>
+                    <span className="cc-input">
+                      <input
+                        className="cc-input__text"
+                        type="number"
+                        min={1}
+                        max={31}
+                        value={closingDay}
+                        onChange={(e) => setClosingDay(e.target.value)}
+                        placeholder="Ex.: 5"
+                        disabled={isPending}
+                      />
+                    </span>
+                  </label>
+
+                  <label className="cc-field" style={{ flex: 1, minWidth: 0 }}>
+                    <span className="cc-field__label">Dia de vencimento</span>
+                    <span className="cc-input">
+                      <input
+                        className="cc-input__text"
+                        type="number"
+                        min={1}
+                        max={31}
+                        value={dueDay}
+                        onChange={(e) => setDueDay(e.target.value)}
+                        placeholder="Ex.: 15"
+                        disabled={isPending}
+                      />
+                    </span>
+                  </label>
+                </div>
+                <span
+                  className="cc-field__hint"
+                  style={{ marginTop: "calc(-1 * var(--space-2))" }}
+                >
+                  Fechamento e vencimento devem ser preenchidos juntos.
+                </span>
+              </>
+            )}
 
             {editingMethod ? (
               <div
@@ -385,6 +478,7 @@ export function PaymentMethodSection({
                 <button
                   type="submit"
                   className="cc-btn cc-btn--primary"
+                  style={{ minHeight: "40px" }}
                   disabled={isPending}
                 >
                   Salvar forma
@@ -392,6 +486,7 @@ export function PaymentMethodSection({
                 <button
                   type="button"
                   className="cc-btn cc-btn--secondary"
+                  style={{ minHeight: "40px" }}
                   onClick={resetForm}
                   disabled={isPending}
                 >
@@ -400,16 +495,18 @@ export function PaymentMethodSection({
                 <button
                   type="button"
                   className="cc-btn cc-btn--danger"
-                  onClick={handleDelete}
+                  style={{ minHeight: "40px" }}
+                  onClick={handleArchive}
                   disabled={isPending}
                 >
-                  Excluir
+                  Arquivar
                 </button>
               </div>
             ) : (
               <button
                 type="submit"
                 className="cc-btn cc-btn--primary"
+                style={{ minHeight: "40px" }}
                 disabled={isPending}
               >
                 Salvar forma

@@ -1,6 +1,8 @@
 import { futureInstallments } from "@/lib/calc/installments";
-import { monthLabel } from "@/lib/dates";
+import { monthLabel, todayISO } from "@/lib/dates";
 import { formatBRL } from "@/lib/money";
+import { cardInvoice } from "@/lib/card-invoice";
+import type { PaymentMethodOption } from "./types";
 
 export const RULE_TEXT: Record<string, string> = {
   proporcional: "proporcional ao salário",
@@ -114,4 +116,42 @@ export function validateExpenseForm(
   }
 
   return errors;
+}
+
+export function filterAvailablePaymentMethods(
+  methods: PaymentMethodOption[],
+  currentPaymentMethodId?: string | null
+): PaymentMethodOption[] {
+  return methods.filter(
+    (pm) => !pm.archived || pm.id === currentPaymentMethodId
+  );
+}
+
+export function suggestCardDueDateAndMonth(args: {
+  selectedPaymentMethod: PaymentMethodOption | undefined;
+  today?: string;
+  isEdit: boolean;
+  dueDateManuallyEdited: boolean;
+}): { dueDate?: string; referenceMonth: string } | null {
+  if (args.isEdit) return null;
+  const pm = args.selectedPaymentMethod;
+  if (
+    !pm ||
+    pm.type !== "cartao" ||
+    typeof pm.closingDay !== "number" ||
+    typeof pm.dueDay !== "number"
+  ) {
+    return null;
+  }
+
+  const invoice = cardInvoice({
+    purchaseDate: args.today ?? todayISO(),
+    closingDay: pm.closingDay,
+    dueDay: pm.dueDay,
+  });
+
+  return {
+    dueDate: args.dueDateManuallyEdited ? undefined : invoice.dueDate,
+    referenceMonth: invoice.referenceMonth.slice(0, 7),
+  };
 }

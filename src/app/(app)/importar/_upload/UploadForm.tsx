@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FileDropzone } from "./FileDropzone";
 import { MappingStep } from "./MappingStep";
@@ -12,6 +13,7 @@ export function UploadForm({
   currentMember,
   paymentMethods,
   members,
+  canEdit,
 }: UploadFormProps) {
   const router = useRouter();
   const ownerSelectId = useId();
@@ -22,7 +24,9 @@ export function UploadForm({
   const [fileError, setFileError] = useState<string>("");
 
   const isAdminOrOwner =
-    currentMember.role === "admin" || currentMember.role === "dono";
+    canEdit !== undefined
+      ? canEdit
+      : currentMember.role === "admin" || currentMember.role === "dono";
 
   // Membro comum só pode importar para si mesmo; admin/dono pode escolher a si, outro ou Família
   const [ownerMemberId, setOwnerMemberId] = useState<string>(
@@ -259,8 +263,27 @@ export function UploadForm({
         </label>
 
         {/* Forma de Pagamento */}
-        <label className="cc-field" htmlFor={paymentMethodSelectId}>
-          <span className="cc-field__label">Conta ou Cartão</span>
+        <div className="cc-field">
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "baseline",
+            }}
+          >
+            <label className="cc-field__label" htmlFor={paymentMethodSelectId}>
+              Conta ou Cartão
+            </label>
+            {isAdminOrOwner && (
+              <Link
+                href="/tipos#formas"
+                className="cc-muted"
+                style={{ fontSize: 13, textDecoration: "underline" }}
+              >
+                Gerenciar formas de pagamento
+              </Link>
+            )}
+          </div>
           {paymentMethods.length === 0 ? (
             <>
               <select
@@ -272,7 +295,17 @@ export function UploadForm({
                 <option value="">Nenhuma forma cadastrada</option>
               </select>
               <span className="cc-field__hint cc-field__hint--error">
-                Cadastre uma conta ou cartão em Tipos e Formas antes de importar.
+                {isAdminOrOwner ? (
+                  <>
+                    Cadastre uma conta ou cartão em{" "}
+                    <Link href="/tipos#formas" style={{ textDecoration: "underline" }}>
+                      Formas de pagamento
+                    </Link>{" "}
+                    antes de importar.
+                  </>
+                ) : (
+                  "Peça a um admin da família para cadastrar uma conta ou cartão antes de importar."
+                )}
               </span>
             </>
           ) : (
@@ -291,7 +324,7 @@ export function UploadForm({
               ))}
             </select>
           )}
-        </label>
+        </div>
       </div>
 
       <div className="cc-formfoot cc-actions--wide">

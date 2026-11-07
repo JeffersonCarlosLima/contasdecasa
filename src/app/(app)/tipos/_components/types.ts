@@ -29,6 +29,14 @@ export interface SavePaymentMethodInput {
   name: string;
   type: PaymentMethodType;
   ownerMemberId?: string | null;
+  cardLast4?: string | null;
+  closingDay?: number | null;
+  dueDay?: number | null;
+}
+
+export interface SetPaymentMethodArchivedInput {
+  id: string;
+  archived: boolean;
 }
 
 export type ActionResponse =

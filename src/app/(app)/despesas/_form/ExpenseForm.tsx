@@ -13,8 +13,10 @@ import { deleteExpense, saveExpense } from "@/app/(app)/despesas/actions";
 import type { SaveExpenseInput } from "@/lib/validators/despesas";
 import { ScopeModal, type ScopeActionType } from "./ScopeModal";
 import {
+  filterAvailablePaymentMethods,
   formatFamilyHint,
   formatInstallmentCaption,
+  suggestCardDueDateAndMonth,
   validateExpenseForm,
 } from "./helpers";
 import type { ExpenseFormProps } from "./types";
@@ -52,6 +54,9 @@ export function ExpenseForm({
   const [description, setDescription] = useState(initialExpense?.description ?? "");
   const [amountCents, setAmountCents] = useState<number | null>(initialExpense?.amountCents ?? null);
   const [dueDate, setDueDate] = useState(defaultDueDate);
+  const [referenceMonth, setReferenceMonth] = useState<string>(effectiveMonth);
+  const [dueDateManuallyEdited, setDueDateManuallyEdited] = useState(false);
+  const [referenceMonthManuallyEdited, setReferenceMonthManuallyEdited] = useState(false);
   const [categoryId, setCategoryId] = useState<string>(
     initialExpense?.categoryId ?? categories[0]?.id ?? ""
   );
@@ -59,7 +64,7 @@ export function ExpenseForm({
     initialExpense ? initialExpense.ownerMemberId : null
   );
   const [paymentMethodId, setPaymentMethodId] = useState<string | null>(
-    initialExpense ? initialExpense.paymentMethodId : paymentMethods[0]?.id ?? null
+    initialExpense ? initialExpense.paymentMethodId : null
   );
   const [isPaid, setIsPaid] = useState<boolean>(initialExpense?.status === "pago");
   const [paidByMemberId, setPaidByMemberId] = useState<string | null>(
@@ -116,6 +121,35 @@ export function ExpenseForm({
     });
   }, [isInstallment, installmentCurrent, installmentTotal, dueDate, defaultDueDate, amountCents]);
 
+  const availablePaymentMethods = useMemo(() => {
+    return filterAvailablePaymentMethods(paymentMethods, initialExpense?.paymentMethodId);
+  }, [paymentMethods, initialExpense?.paymentMethodId]);
+
+  const handlePaymentMethodChange = (newPaymentMethodId: string | null) => {
+    setPaymentMethodId(newPaymentMethodId);
+
+    if (!isEdit && newPaymentMethodId) {
+      const selectedPm = paymentMethods.find((pm) => pm.id === newPaymentMethodId);
+      const suggestion = suggestCardDueDateAndMonth({
+        selectedPaymentMethod: selectedPm,
+        isEdit,
+        dueDateManuallyEdited,
+      });
+
+      if (suggestion) {
+        if (suggestion.dueDate && !dueDateManuallyEdited) {
+          setDueDate(suggestion.dueDate);
+          if (errors.dueDate) {
+            setErrors((prev) => ({ ...prev, dueDate: undefined }));
+          }
+        }
+        if (!referenceMonthManuallyEdited) {
+          setReferenceMonth(suggestion.referenceMonth);
+        }
+      }
+    }
+  };
+
   const validateForm = (): boolean => {
     const nextErrors = validateExpenseForm({
       description,
@@ -134,7 +168,7 @@ export function ExpenseForm({
     setServerError(null);
     setSuccessMessage(null);
 
-    const month = dueDate.slice(0, 7);
+    const month = referenceMonth || dueDate.slice(0, 7);
 
     const payload: SaveExpenseInput = {
       id: isEdit ? initialExpense?.id : undefined,
@@ -170,6 +204,11 @@ export function ExpenseForm({
           setSuccessMessage("Despesa lançada com sucesso! Você pode lançar outra.");
           setDescription("");
           setAmountCents(null);
+          setDueDate(defaultDueDate);
+          setDueDateManuallyEdited(false);
+          setReferenceMonth(effectiveMonth);
+          setReferenceMonthManuallyEdited(false);
+          setPaymentMethodId(null);
           setNotes("");
           setIsInstallment(false);
           setIsRecurring(false);
@@ -350,6 +389,11 @@ export function ExpenseForm({
                 disabled={!canEdit || isSubmitting}
                 onChange={(e) => {
                   setDueDate(e.target.value);
+                  setDueDateManuallyEdited(true);
+                  if (e.target.value) {
+                    setReferenceMonth(e.target.value.slice(0, 7));
+                    setReferenceMonthManuallyEdited(true);
+                  }
                   if (errors.dueDate) {
                     setErrors((prev) => ({ ...prev, dueDate: undefined }));
                   }
@@ -470,12 +514,13 @@ export function ExpenseForm({
               style={{ height: 44 }}
               disabled={!canEdit || isSubmitting}
               value={paymentMethodId ?? ""}
-              onChange={(e) => setPaymentMethodId(e.target.value || null)}
+              onChange={(e) => handlePaymentMethodChange(e.target.value || null)}
             >
               <option value="">Boleto / Pix</option>
-              {paymentMethods.map((pm) => (
+              {availablePaymentMethods.map((pm) => (
                 <option key={pm.id} value={pm.id}>
                   {pm.name}
+                  {pm.archived ? " (arquivada)" : ""}
                 </option>
               ))}
             </select>

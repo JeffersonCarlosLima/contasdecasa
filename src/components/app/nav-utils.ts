@@ -46,7 +46,7 @@ export function getMobileHeaderTitle(pathname: string): string {
     return "Fechamento";
   }
   if (cleanPath === "/tipos" || cleanPath.startsWith("/tipos/")) {
-    return "Tipos de despesa";
+    return "Tipos e formas";
   }
   if (cleanPath === "/familia" || cleanPath.startsWith("/familia/")) {
     return "Família";

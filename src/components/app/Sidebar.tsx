@@ -23,7 +23,7 @@ const DESKTOP_NAV_ITEMS = [
   { href: "/despesas", label: "Despesas", Icon: DespesasIcon },
   { href: "/importar", label: "Importar", Icon: ImportarIcon },
   { href: "/mes", label: "Fechamento do mês", Icon: FechamentoIcon },
-  { href: "/tipos", label: "Tipos de despesa", Icon: TiposIcon },
+  { href: "/tipos", label: "Tipos e formas", Icon: TiposIcon },
   { href: "/familia", label: "Família", Icon: FamiliaIcon },
 ];
 

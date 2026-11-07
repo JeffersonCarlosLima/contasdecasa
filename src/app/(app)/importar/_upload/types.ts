@@ -29,4 +29,5 @@ export interface UploadFormProps {
   currentMember: CurrentMember;
   paymentMethods: PaymentMethodOption[];
   members: MemberOption[];
+  canEdit?: boolean;
 }

@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  filterAvailablePaymentMethods,
   formatFamilyHint,
   formatInstallmentCaption,
   formatParticipantsText,
+  suggestCardDueDateAndMonth,
   validateExpenseForm,
 } from "./helpers";
 
@@ -165,6 +167,131 @@ describe("Helpers do Formulário de Despesas (06/tela-lancar-despesa)", () => {
       });
 
       expect(Object.keys(errors)).toHaveLength(0);
+    });
+  });
+
+  describe("filterAvailablePaymentMethods", () => {
+    const methods = [
+      { id: "pm-1", name: "Nubank", archived: false },
+      { id: "pm-2", name: "Bradesco", archived: false },
+      { id: "pm-3", name: "Inter Antigo", archived: true },
+      { id: "pm-4", name: "C6 Arquivado", archived: true },
+    ];
+
+    it("retorna apenas métodos ativos quando não há método inicial (nova despesa)", () => {
+      const available = filterAvailablePaymentMethods(methods, null);
+      expect(available.map((m) => m.id)).toEqual(["pm-1", "pm-2"]);
+    });
+
+    it("retorna ativos mais a forma arquivada se ela for a forma da despesa na edição", () => {
+      const available = filterAvailablePaymentMethods(methods, "pm-3");
+      expect(available.map((m) => m.id)).toEqual(["pm-1", "pm-2", "pm-3"]);
+    });
+
+    it("não inclui outras formas arquivadas mesmo na edição", () => {
+      const available = filterAvailablePaymentMethods(methods, "pm-3");
+      expect(available.some((m) => m.id === "pm-4")).toBe(false);
+    });
+  });
+
+  describe("suggestCardDueDateAndMonth", () => {
+    const cardPm = {
+      id: "card-1",
+      name: "Nubank",
+      type: "cartao",
+      closingDay: 5,
+      dueDay: 15,
+    };
+
+    it("sugere vencimento e mês de referência para despesa nova", () => {
+      const result = suggestCardDueDateAndMonth({
+        selectedPaymentMethod: cardPm,
+        today: "2026-05-03", // antes do fechamento (5)
+        isEdit: false,
+        dueDateManuallyEdited: false,
+      });
+
+      expect(result).toEqual({
+        dueDate: "2026-05-15",
+        referenceMonth: "2026-05",
+      });
+    });
+
+    it("sugere vencimento no mês seguinte se compra após o fechamento", () => {
+      const result = suggestCardDueDateAndMonth({
+        selectedPaymentMethod: cardPm,
+        today: "2026-05-10", // após o fechamento (5)
+        isEdit: false,
+        dueDateManuallyEdited: false,
+      });
+
+      expect(result).toEqual({
+        dueDate: "2026-06-15",
+        referenceMonth: "2026-06",
+      });
+    });
+
+    it("não sobrescreve vencimento se o usuário já editou manualmente", () => {
+      const result = suggestCardDueDateAndMonth({
+        selectedPaymentMethod: cardPm,
+        today: "2026-05-03",
+        isEdit: false,
+        dueDateManuallyEdited: true,
+      });
+
+      expect(result).toEqual({
+        dueDate: undefined,
+        referenceMonth: "2026-05",
+      });
+    });
+
+    it("não sugere se estiver em modo de edição", () => {
+      const result = suggestCardDueDateAndMonth({
+        selectedPaymentMethod: cardPm,
+        today: "2026-05-03",
+        isEdit: true,
+        dueDateManuallyEdited: false,
+      });
+
+      expect(result).toBeNull();
+    });
+
+    it("não sugere se o método não for cartão", () => {
+      const contaPm = {
+        id: "conta-1",
+        name: "Bradesco",
+        type: "conta",
+        closingDay: 5,
+        dueDay: 15,
+      };
+
+      const result = suggestCardDueDateAndMonth({
+        selectedPaymentMethod: contaPm,
+        today: "2026-05-03",
+        isEdit: false,
+        dueDateManuallyEdited: false,
+      });
+
+      expect(result).toBeNull();
+    });
+
+    it("não sugere se o cartão não possuir fechamento ou vencimento", () => {
+      const cardNoDays = {
+        id: "card-2",
+        name: "Cartão sem dias",
+        type: "cartao",
+        closingDay: null,
+        dueDay: null,
+      };
+
+      const result = suggestCardDueDateAndMonth({
+        selectedPaymentMethod: cardNoDays,
+        today: "2026-05-03",
+        isEdit: false,
+        dueDateManuallyEdited: false,
+      });
+
+      expect(result).toBeNull();
     });
   });
 });

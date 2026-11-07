@@ -9,6 +9,10 @@ export interface CategoryOption {
 export interface PaymentMethodOption {
   id: string;
   name: string;
+  type?: string;
+  archived?: boolean;
+  closingDay?: number | null;
+  dueDay?: number | null;
 }
 
 export interface MemberOption {

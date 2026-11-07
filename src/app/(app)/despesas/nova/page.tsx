@@ -52,6 +52,10 @@ export default async function NovaDespesaPage({ searchParams }: NovaDespesaPageP
           paymentMethods={paymentMethods.map((pm) => ({
             id: pm.id,
             name: pm.name,
+            type: pm.type,
+            archived: pm.archived,
+            closingDay: pm.closingDay,
+            dueDay: pm.dueDay,
           }))}
           members={familyData.members.map((m) => ({
             id: m.id,
