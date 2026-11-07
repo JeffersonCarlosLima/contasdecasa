@@ -60,7 +60,11 @@ export function RenameFamilyModal({
               disabled={isPending}
             />
           </span>
-          {error && <span className="cc-field__hint cc-field__hint--error">{error}</span>}
+          {error && (
+            <span className="cc-field__hint cc-field__hint--error" role="alert">
+              {error}
+            </span>
+          )}
         </label>
 
         <div className="cc-formfoot">

@@ -233,6 +233,8 @@ export function EditMemberModal({
         <div className="cc-field">
           <span className="cc-field__label">Cor do membro</span>
           <div
+            role="group"
+            aria-label="Cor do membro"
             style={{
               display: "flex",
               gap: "12px",
@@ -254,14 +256,14 @@ export function EditMemberModal({
                     display: "inline-flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    padding: "3px",
+                    minWidth: "40px",
+                    minHeight: "40px",
                     borderRadius: "var(--radius-full)",
                     border: isSelected
                       ? "2px solid var(--brand)"
                       : "2px solid transparent",
                     background: isSelected ? "var(--brand-soft)" : "transparent",
                     cursor: "pointer",
-                    outline: "none",
                   }}
                 >
                   <MemberAvatar
@@ -309,7 +311,11 @@ export function EditMemberModal({
           </label>
         )}
 
-        {error && <span className="cc-field__hint cc-field__hint--error">{error}</span>}
+        {error && (
+          <span className="cc-field__hint cc-field__hint--error" role="alert">
+            {error}
+          </span>
+        )}
 
         {/* Confirmação de Transferência de Posse */}
         {confirmTransfer && (

@@ -59,7 +59,7 @@ export function InviteLinkModal({ isOpen, link, onClose }: InviteLinkModalProps)
           <Button type="button" variant="secondary" onClick={onClose}>
             Fechar
           </Button>
-          <Button type="button" variant="primary" onClick={handleCopy}>
+          <Button type="button" variant="primary" onClick={handleCopy} aria-live="polite">
             {copied ? "Link copiado!" : "Copiar link"}
           </Button>
         </div>

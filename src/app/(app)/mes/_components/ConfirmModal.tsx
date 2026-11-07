@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 
 interface ConfirmModalProps {
@@ -26,17 +26,60 @@ export function ConfirmModal({
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
+  const titleId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
     if (!isOpen) return;
 
+    previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
+
+    const timer = setTimeout(() => {
+      const focusables = dialogRef.current?.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusables && focusables.length > 0) {
+        focusables[0]?.focus();
+      }
+    }, 50);
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        e.preventDefault();
         onCancel();
+        return;
+      }
+
+      if (e.key === "Tab") {
+        const focusableEls = dialogRef.current?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        );
+        if (!focusableEls || focusableEls.length === 0) return;
+
+        const firstEl = focusableEls[0];
+        const lastEl = focusableEls[focusableEls.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstEl) {
+            e.preventDefault();
+            lastEl?.focus();
+          }
+        } else {
+          if (document.activeElement === lastEl) {
+            e.preventDefault();
+            firstEl?.focus();
+          }
+        }
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("keydown", handleKeyDown);
+      previouslyFocusedRef.current?.focus();
+    };
   }, [isOpen, onCancel]);
 
   if (!isOpen) return null;
@@ -45,7 +88,7 @@ export function ConfirmModal({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={title}
+      aria-labelledby={titleId}
       style={{
         position: "fixed",
         inset: 0,
@@ -63,6 +106,7 @@ export function ConfirmModal({
       }}
     >
       <div
+        ref={dialogRef}
         className="cc-card"
         style={{
           width: "100%",
@@ -74,7 +118,7 @@ export function ConfirmModal({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="title" style={{ margin: 0 }}>
+        <h2 id={titleId} className="title" style={{ margin: 0 }}>
           {title}
         </h2>
         <div className="body cc-muted" style={{ margin: 0 }}>

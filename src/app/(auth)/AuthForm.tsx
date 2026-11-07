@@ -158,7 +158,7 @@ export function AuthForm({ mode }: AuthFormProps) {
             flexWrap: "wrap",
           }}
         >
-          <label className="cc-check">
+          <label className="cc-check" style={{ minHeight: "40px", cursor: "pointer" }}>
             <input
               type="checkbox"
               checked={rememberMe}
@@ -169,16 +169,23 @@ export function AuthForm({ mode }: AuthFormProps) {
 
           {mode === "entrar" && (
             <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-              <a
-                href="#"
+              <button
+                type="button"
                 className="label"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setShowForgotNotice(true);
+                style={{
+                  background: "transparent",
+                  border: 0,
+                  padding: 0,
+                  minHeight: "40px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  cursor: "pointer",
+                  color: "inherit",
                 }}
+                onClick={() => setShowForgotNotice(true)}
               >
                 Esqueci a senha
-              </a>
+              </button>
               {showForgotNotice && (
                 <span className="caption cc-muted" role="status">
                   Em breve

@@ -95,7 +95,11 @@ export function ManageInviteModal({
           </div>
         </div>
 
-        {error && <span className="cc-field__hint cc-field__hint--error">{error}</span>}
+        {error && (
+          <span className="cc-field__hint cc-field__hint--error" role="alert">
+            {error}
+          </span>
+        )}
 
         {confirmCancel ? (
           <div

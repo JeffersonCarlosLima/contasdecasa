@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 
 interface ModalProps {
   isOpen: boolean;
@@ -17,17 +17,61 @@ export function Modal({
   children,
   maxWidth = "480px",
 }: ModalProps) {
+  const titleId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
     if (!isOpen) return;
 
+    previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
+
+    // Foco automático no primeiro elemento focável dentro do diálogo
+    const timer = setTimeout(() => {
+      const focusables = dialogRef.current?.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusables && focusables.length > 0) {
+        focusables[0]?.focus();
+      }
+    }, 50);
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        e.preventDefault();
         onClose();
+        return;
+      }
+
+      if (e.key === "Tab") {
+        const focusableEls = dialogRef.current?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        );
+        if (!focusableEls || focusableEls.length === 0) return;
+
+        const firstEl = focusableEls[0];
+        const lastEl = focusableEls[focusableEls.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstEl) {
+            e.preventDefault();
+            lastEl?.focus();
+          }
+        } else {
+          if (document.activeElement === lastEl) {
+            e.preventDefault();
+            firstEl?.focus();
+          }
+        }
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("keydown", handleKeyDown);
+      previouslyFocusedRef.current?.focus();
+    };
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
@@ -36,7 +80,7 @@ export function Modal({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={title}
+      aria-labelledby={titleId}
       style={{
         position: "fixed",
         inset: 0,
@@ -54,6 +98,7 @@ export function Modal({
       }}
     >
       <div
+        ref={dialogRef}
         className="cc-card"
         style={{
           width: "100%",
@@ -76,13 +121,13 @@ export function Modal({
             paddingBottom: "var(--space-3)",
           }}
         >
-          <h2 className="title" style={{ margin: 0 }}>
+          <h2 id={titleId} className="title" style={{ margin: 0 }}>
             {title}
           </h2>
           <button
             type="button"
             className="cc-btn cc-btn--ghost cc-btn--sm"
-            style={{ width: "32px", height: "32px", padding: 0 }}
+            style={{ minWidth: "40px", minHeight: "40px", padding: 0 }}
             onClick={onClose}
             aria-label="Fechar modal"
           >
