@@ -48,6 +48,7 @@ export function ExpenseFilters({
           <button
             type="button"
             aria-pressed={currentMode === "pessoa"}
+            style={{ minHeight: "40px" }}
             onClick={() => updateQuery({ modo: "pessoa" })}
           >
             Por pessoa
@@ -55,6 +56,7 @@ export function ExpenseFilters({
           <button
             type="button"
             aria-pressed={currentMode === "data"}
+            style={{ minHeight: "40px" }}
             onClick={() => updateQuery({ modo: "data" })}
           >
             Por data
@@ -78,6 +80,7 @@ export function ExpenseFilters({
           <select
             id={statusId}
             className="cc-select"
+            style={{ height: "44px" }}
             value={currentStatus ?? ""}
             onChange={(e) => updateQuery({ status: e.target.value || null })}
           >
@@ -102,6 +105,7 @@ export function ExpenseFilters({
           <select
             id={catId}
             className="cc-select"
+            style={{ height: "44px" }}
             value={currentCategory ?? ""}
             onChange={(e) => updateQuery({ tipo: e.target.value || null })}
           >
@@ -120,6 +124,7 @@ export function ExpenseFilters({
         <button
           type="button"
           className="cc-chip"
+          style={{ minHeight: "40px" }}
           aria-pressed={!currentMember || currentMember === "todos"}
           onClick={() => updateQuery({ membro: null })}
         >
@@ -130,6 +135,7 @@ export function ExpenseFilters({
             key={m.id}
             type="button"
             className="cc-chip"
+            style={{ minHeight: "40px" }}
             aria-pressed={currentMember === m.id}
             onClick={() => updateQuery({ membro: m.id })}
           >
@@ -144,6 +150,7 @@ export function ExpenseFilters({
         <button
           type="button"
           className="cc-chip"
+          style={{ minHeight: "40px" }}
           aria-pressed={currentMember === "familia"}
           onClick={() => updateQuery({ membro: "familia" })}
         >

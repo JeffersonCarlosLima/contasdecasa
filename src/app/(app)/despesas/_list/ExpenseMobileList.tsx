@@ -28,6 +28,14 @@ export function ExpenseMobileList({
     router.push(`/despesas/${id}`);
   }
 
+  function handleRowKeyDown(e: React.KeyboardEvent, id: string) {
+    if ((e.target as HTMLElement).closest("button, a")) return;
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      router.push(`/despesas/${id}`);
+    }
+  }
+
   function renderMeta(item: ExpenseItem, showOwner = false) {
     const installmentText = item.installment
       ? `${item.installment.current} de ${item.installment.total}`
@@ -84,8 +92,12 @@ export function ExpenseMobileList({
             return (
               <div
                 key={item.id}
+                role="button"
+                tabIndex={0}
                 onClick={(e) => handleRowClick(e, item.id)}
+                onKeyDown={(e) => handleRowKeyDown(e, item.id)}
                 style={{ cursor: "pointer" }}
+                aria-label={`Ver detalhes da despesa ${item.description}`}
               >
                 <ExpenseRow
                   title={item.description}
@@ -160,8 +172,12 @@ export function ExpenseMobileList({
               return (
                 <div
                   key={item.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={(e) => handleRowClick(e, item.id)}
+                  onKeyDown={(e) => handleRowKeyDown(e, item.id)}
                   style={{ cursor: "pointer" }}
+                  aria-label={`Ver detalhes da despesa ${item.description}`}
                 >
                   <ExpenseRow
                     title={item.description}

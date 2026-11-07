@@ -42,6 +42,7 @@ export function ExpenseRowAction({
     <button
       type="button"
       className="cc-btn cc-btn--ghost cc-btn--sm"
+      style={{ minHeight: "40px" }}
       disabled={disabled || isPending}
       onClick={handleClick}
       aria-label={isPaid ? "Desfazer pagamento" : "Marcar como paga"}

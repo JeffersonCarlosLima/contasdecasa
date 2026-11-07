@@ -24,13 +24,18 @@ export function MobileBottomBar({ pathname }: MobileBottomBarProps) {
 
   return (
     <nav className="cc-bottom" aria-label="Principal">
-      <Link href="/" aria-current={isHomeActive ? "page" : undefined}>
+      <Link
+        href="/"
+        aria-current={isHomeActive ? "page" : undefined}
+        style={{ minHeight: "44px", justifyContent: "center" }}
+      >
         <DashboardIcon />
         Início
       </Link>
       <Link
         href="/despesas"
         aria-current={isDespesasActive ? "page" : undefined}
+        style={{ minHeight: "44px", justifyContent: "center" }}
       >
         <DespesasIcon />
         Despesas
@@ -42,13 +47,18 @@ export function MobileBottomBar({ pathname }: MobileBottomBarProps) {
       >
         <PlusIcon />
       </Link>
-      <Link href="/mes" aria-current={isMesActive ? "page" : undefined}>
+      <Link
+        href="/mes"
+        aria-current={isMesActive ? "page" : undefined}
+        style={{ minHeight: "44px", justifyContent: "center" }}
+      >
         <FechamentoIcon />
         Mês
       </Link>
       <Link
         href="/familia"
         aria-current={isFamiliaActive ? "page" : undefined}
+        style={{ minHeight: "44px", justifyContent: "center" }}
       >
         <FamiliaIcon />
         Família

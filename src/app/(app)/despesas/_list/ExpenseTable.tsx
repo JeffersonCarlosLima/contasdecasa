@@ -32,6 +32,14 @@ export function ExpenseTable({
     router.push(`/despesas/${id}`);
   }
 
+  function handleRowKeyDown(e: React.KeyboardEvent, id: string) {
+    if ((e.target as HTMLElement).closest("button, a")) return;
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      router.push(`/despesas/${id}`);
+    }
+  }
+
   const monthName = monthLabel(month).split(" ")[0]?.toLowerCase() ?? month;
 
   if (mode === "data") {
@@ -77,8 +85,11 @@ export function ExpenseTable({
                 return (
                   <tr
                     key={item.id}
+                    tabIndex={0}
                     onClick={(e) => handleRowClick(e, item.id)}
+                    onKeyDown={(e) => handleRowKeyDown(e, item.id)}
                     style={{ cursor: "pointer" }}
+                    aria-label={`Ver detalhes da despesa ${item.description}`}
                   >
                     <td>
                       {item.owner ? (
@@ -235,8 +246,11 @@ export function ExpenseTable({
                     return (
                       <tr
                         key={item.id}
+                        tabIndex={0}
                         onClick={(e) => handleRowClick(e, item.id)}
+                        onKeyDown={(e) => handleRowKeyDown(e, item.id)}
                         style={{ cursor: "pointer" }}
+                        aria-label={`Ver detalhes da despesa ${item.description}`}
                       >
                         <td>
                           <b>{item.description}</b>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useId, useRef } from "react";
 import { Button } from "@/components/ui/Button";
 
 export type ScopeActionType = "save" | "delete";
@@ -22,17 +22,61 @@ export function ScopeModal({
   onClose,
   onConfirm,
 }: ScopeModalProps) {
+  const titleId = useId();
+  const descId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
     if (!isOpen) return;
 
+    previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
+
+    const timer = setTimeout(() => {
+      const focusables = dialogRef.current?.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusables && focusables.length > 0) {
+        focusables[0]?.focus();
+      }
+    }, 50);
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !isPending) {
+        e.preventDefault();
         onClose();
+        return;
+      }
+
+      if (e.key === "Tab") {
+        const focusableEls = dialogRef.current?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (!focusableEls || focusableEls.length === 0) return;
+
+        const firstEl = focusableEls[0];
+        const lastEl = focusableEls[focusableEls.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstEl) {
+            e.preventDefault();
+            lastEl?.focus();
+          }
+        } else {
+          if (document.activeElement === lastEl) {
+            e.preventDefault();
+            firstEl?.focus();
+          }
+        }
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("keydown", handleKeyDown);
+      previouslyFocusedRef.current?.focus();
+    };
   }, [isOpen, isPending, onClose]);
 
   if (!isOpen) return null;
@@ -51,7 +95,8 @@ export function ScopeModal({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={title}
+      aria-labelledby={titleId}
+      aria-describedby={descId}
       style={{
         position: "fixed",
         inset: 0,
@@ -69,6 +114,7 @@ export function ScopeModal({
       }}
     >
       <div
+        ref={dialogRef}
         className="cc-card"
         style={{
           width: "100%",
@@ -81,10 +127,10 @@ export function ScopeModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
-          <h2 className="title" style={{ margin: 0 }}>
+          <h2 id={titleId} className="title" style={{ margin: 0 }}>
             {title}
           </h2>
-          <p className="body cc-muted" style={{ margin: 0 }}>
+          <p id={descId} className="body cc-muted" style={{ margin: 0 }}>
             {description}
           </p>
         </div>
@@ -95,6 +141,7 @@ export function ScopeModal({
             variant="secondary"
             onClick={onClose}
             disabled={isPending}
+            style={{ minHeight: "40px" }}
           >
             Cancelar
           </Button>
@@ -106,6 +153,7 @@ export function ScopeModal({
                 variant="secondary"
                 disabled={isPending}
                 onClick={() => onConfirm("esta")}
+                style={{ minHeight: "40px" }}
               >
                 {isPending ? "Aguarde…" : "Só esta"}
               </Button>
@@ -114,6 +162,7 @@ export function ScopeModal({
                 variant={isDelete ? "danger" : "primary"}
                 disabled={isPending}
                 onClick={() => onConfirm("proximas")}
+                style={{ minHeight: "40px" }}
               >
                 {isPending ? "Aguarde…" : "Esta e as próximas"}
               </Button>
@@ -124,6 +173,7 @@ export function ScopeModal({
               variant="danger"
               disabled={isPending}
               onClick={() => onConfirm("esta")}
+              style={{ minHeight: "40px" }}
             >
               {isPending ? "Excluindo…" : "Confirmar exclusão"}
             </Button>

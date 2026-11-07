@@ -30,12 +30,12 @@ export function MobileHeader({
           href="/despesas"
           className="cc-month__btn"
           aria-label="Voltar"
-          style={{ textDecoration: "none" }}
+          style={{ textDecoration: "none", minWidth: 40, minHeight: 40 }}
         >
           <BackChevronIcon />
         </Link>
         <span className="title">{title}</span>
-        <span style={{ width: 32 }} aria-hidden="true" />
+        <span style={{ width: 40 }} aria-hidden="true" />
       </header>
     );
   }

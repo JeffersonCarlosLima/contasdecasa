@@ -319,7 +319,7 @@ export function ExpenseForm({
               />
             </span>
             {errors.description && (
-              <span className="cc-field__hint cc-field__hint--error">
+              <span className="cc-field__hint cc-field__hint--error" role="alert">
                 {errors.description}
               </span>
             )}
@@ -357,7 +357,7 @@ export function ExpenseForm({
               />
             </span>
             {errors.dueDate && (
-              <span className="cc-field__hint cc-field__hint--error">
+              <span className="cc-field__hint cc-field__hint--error" role="alert">
                 {errors.dueDate}
               </span>
             )}
@@ -384,6 +384,7 @@ export function ExpenseForm({
                 color={cat.color}
                 pressed={categoryId === cat.id}
                 disabled={!canEdit || isSubmitting}
+                style={{ minHeight: "40px" }}
                 onClick={() => {
                   setCategoryId(cat.id);
                   if (errors.categoryId) {
@@ -397,13 +398,19 @@ export function ExpenseForm({
             <Link
               className="cc-chip"
               href="/tipos"
-              style={{ textDecoration: "none", color: "var(--brand-ink)" }}
+              style={{
+                textDecoration: "none",
+                color: "var(--brand-ink)",
+                minHeight: "40px",
+                display: "inline-flex",
+                alignItems: "center",
+              }}
             >
               + Novo tipo
             </Link>
           </div>
           {errors.categoryId && (
-            <span className="cc-field__hint cc-field__hint--error">
+            <span className="cc-field__hint cc-field__hint--error" role="alert">
               {errors.categoryId}
             </span>
           )}
@@ -426,6 +433,7 @@ export function ExpenseForm({
                     aria-pressed={isSelected}
                     disabled={!canEdit || isSubmitting || isMemberRestricted}
                     title={isMemberRestricted ? "Disponível para administrador ou dono" : undefined}
+                    style={{ minHeight: "40px" }}
                     onClick={() => setOwnerMemberId(m.id)}
                   >
                     <MemberAvatar name={m.displayName} color={m.color} />
@@ -439,6 +447,7 @@ export function ExpenseForm({
                 className="cc-chip"
                 aria-pressed={ownerMemberId === null}
                 disabled={!canEdit || isSubmitting}
+                style={{ minHeight: "40px" }}
                 onClick={() => setOwnerMemberId(null)}
               >
                 <MemberAvatar name="Família" color="family" />
@@ -525,7 +534,10 @@ export function ExpenseForm({
             gap: 12,
           }}
         >
-          <label className="cc-check">
+          <label
+            className="cc-check"
+            style={{ minHeight: "40px", cursor: !canEdit ? "default" : "pointer" }}
+          >
             <input
               type="checkbox"
               checked={isInstallment}
@@ -562,7 +574,7 @@ export function ExpenseForm({
                     />
                   </span>
                   {errors.installmentCurrent && (
-                    <span className="cc-field__hint cc-field__hint--error">
+                    <span className="cc-field__hint cc-field__hint--error" role="alert">
                       {errors.installmentCurrent}
                     </span>
                   )}
@@ -586,7 +598,7 @@ export function ExpenseForm({
                     />
                   </span>
                   {errors.installmentTotal && (
-                    <span className="cc-field__hint cc-field__hint--error">
+                    <span className="cc-field__hint cc-field__hint--error" role="alert">
                       {errors.installmentTotal}
                     </span>
                   )}
@@ -599,7 +611,10 @@ export function ExpenseForm({
             </>
           )}
 
-          <label className="cc-check">
+          <label
+            className="cc-check"
+            style={{ minHeight: "40px", cursor: !canEdit ? "default" : "pointer" }}
+          >
             <input
               type="checkbox"
               checked={isRecurring}
@@ -636,7 +651,7 @@ export function ExpenseForm({
             <button
               type="button"
               className="cc-btn cc-btn--danger"
-              style={{ marginRight: "auto" }}
+              style={{ marginRight: "auto", minHeight: "40px" }}
               disabled={isSubmitting}
               onClick={handleDeleteClick}
             >
@@ -647,7 +662,7 @@ export function ExpenseForm({
           <Link
             className="cc-btn cc-btn--secondary"
             href={backHref}
-            style={{ textDecoration: "none" }}
+            style={{ textDecoration: "none", minHeight: "40px", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
           >
             Cancelar
           </Link>
@@ -656,6 +671,7 @@ export function ExpenseForm({
             <button
               type="button"
               className="cc-btn cc-btn--secondary cc-hide-sm"
+              style={{ minHeight: "40px" }}
               disabled={!canEdit || isSubmitting}
               onClick={() => handleSaveClick("saveAndNew")}
             >
@@ -666,6 +682,7 @@ export function ExpenseForm({
           <button
             type="submit"
             className="cc-btn cc-btn--primary"
+            style={{ minHeight: "40px" }}
             disabled={!canEdit || isSubmitting}
           >
             {isSubmitting
