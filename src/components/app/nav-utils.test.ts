@@ -83,6 +83,8 @@ describe("nav-utils", () => {
       expect(getMobileHeaderTitle("/despesas")).toBe("Despesas");
       expect(getMobileHeaderTitle("/despesas/nova")).toBe("Lançar despesa");
       expect(getMobileHeaderTitle("/despesas/xyz-789")).toBe("Editar despesa");
+      expect(getMobileHeaderTitle("/importar")).toBe("Importar extrato");
+      expect(getMobileHeaderTitle("/importar/historico")).toBe("Importar extrato");
       expect(getMobileHeaderTitle("/mes")).toBe("Fechamento");
       expect(getMobileHeaderTitle("/tipos")).toBe("Tipos de despesa");
       expect(getMobileHeaderTitle("/familia")).toBe("Família");

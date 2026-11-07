@@ -66,6 +66,13 @@ export default async function DespesasPage({ searchParams }: DespesasPageProps) 
               closed={closed}
             />
             <Link
+              className="cc-btn cc-btn--secondary"
+              href="/importar"
+              style={{ textDecoration: "none" }}
+            >
+              Importar extrato
+            </Link>
+            <Link
               className="cc-btn cc-btn--primary cc-hide-sm"
               href="/despesas/nova"
               style={{ textDecoration: "none" }}

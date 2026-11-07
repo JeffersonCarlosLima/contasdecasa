@@ -5,6 +5,7 @@ import {
   DespesasIcon,
   FamiliaIcon,
   FechamentoIcon,
+  ImportarIcon,
   TiposIcon,
 } from "./icons";
 import { isExpenseFormRoute, isRouteActive } from "./nav-utils";
@@ -20,6 +21,7 @@ export interface SidebarProps {
 const DESKTOP_NAV_ITEMS = [
   { href: "/", label: "Dashboard", Icon: DashboardIcon },
   { href: "/despesas", label: "Despesas", Icon: DespesasIcon },
+  { href: "/importar", label: "Importar", Icon: ImportarIcon },
   { href: "/mes", label: "Fechamento do mês", Icon: FechamentoIcon },
   { href: "/tipos", label: "Tipos de despesa", Icon: TiposIcon },
   { href: "/familia", label: "Família", Icon: FamiliaIcon },

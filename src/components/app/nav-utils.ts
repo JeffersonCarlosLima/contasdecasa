@@ -39,6 +39,9 @@ export function getMobileHeaderTitle(pathname: string): string {
   if (cleanPath === "/despesas" || cleanPath.startsWith("/despesas/")) {
     return "Despesas";
   }
+  if (cleanPath === "/importar" || cleanPath.startsWith("/importar/")) {
+    return "Importar extrato";
+  }
   if (cleanPath === "/mes" || cleanPath.startsWith("/mes/")) {
     return "Fechamento";
   }
