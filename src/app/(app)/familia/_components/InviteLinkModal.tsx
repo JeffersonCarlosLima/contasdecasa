@@ -3,14 +3,21 @@
 import { useState } from "react";
 import { Modal } from "./Modal";
 import { Button } from "@/components/ui/Button";
+import { buildWhatsAppInviteUrl } from "./helpers";
 
 interface InviteLinkModalProps {
   isOpen: boolean;
   link: string;
+  familyName?: string;
   onClose: () => void;
 }
 
-export function InviteLinkModal({ isOpen, link, onClose }: InviteLinkModalProps) {
+export function InviteLinkModal({
+  isOpen,
+  link,
+  familyName = "família",
+  onClose,
+}: InviteLinkModalProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -32,6 +39,8 @@ export function InviteLinkModal({ isOpen, link, onClose }: InviteLinkModalProps)
       setCopied(false);
     }
   };
+
+  const whatsappUrl = buildWhatsAppInviteUrl(familyName, link);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Link do convite gerado">
@@ -55,10 +64,19 @@ export function InviteLinkModal({ isOpen, link, onClose }: InviteLinkModalProps)
           </span>
         </label>
 
-        <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
+        <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", flexWrap: "wrap" }}>
           <Button type="button" variant="secondary" onClick={onClose}>
             Fechar
           </Button>
+          <a
+            href={whatsappUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="cc-btn cc-btn--secondary"
+            style={{ textDecoration: "none" }}
+          >
+            Enviar pelo WhatsApp
+          </a>
           <Button type="button" variant="primary" onClick={handleCopy} aria-live="polite">
             {copied ? "Link copiado!" : "Copiar link"}
           </Button>

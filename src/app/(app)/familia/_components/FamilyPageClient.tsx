@@ -171,6 +171,7 @@ export function FamilyPageClient({
         <InviteLinkModal
           isOpen={!!generatedLink}
           link={generatedLink}
+          familyName={initialFamilyName}
           onClose={() => setGeneratedLink(null)}
         />
       )}

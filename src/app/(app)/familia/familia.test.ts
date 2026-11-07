@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildWhatsAppInviteUrl,
   formatInviteMeta,
   formatMemberMeta,
   getMemberRoleLabel,
@@ -97,6 +98,17 @@ describe("Helpers e formatação da tela de Família", () => {
         expiresAt: new Date("2026-11-20T12:00:00Z"),
       });
       expect(meta).toBe("Cônjuge · admin · expira em 20/11");
+    });
+  });
+
+  describe("buildWhatsAppInviteUrl", () => {
+    it("monta o link de convite do WhatsApp com mensagem e link codificados", () => {
+      const familyName = "Família Lima";
+      const link = "https://app.contasdecasa.com/convite/token123";
+      const url = buildWhatsAppInviteUrl(familyName, link);
+
+      const expectedMessage = `Você foi convidado para a Família Lima no Contas da Casa. Crie sua conta com este email e entre na família: ${link}`;
+      expect(url).toBe(`https://wa.me/?text=${encodeURIComponent(expectedMessage)}`);
     });
   });
 

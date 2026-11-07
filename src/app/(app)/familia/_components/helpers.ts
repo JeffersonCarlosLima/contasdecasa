@@ -77,3 +77,8 @@ export function getPluralizedSupportText(
 
   return `${memberText} e ${inviteText}. Todos veem os lançamentos de todos; cada um lança as próprias despesas.`;
 }
+
+export function buildWhatsAppInviteUrl(familyName: string, link: string): string {
+  const message = `Você foi convidado para a ${familyName} no Contas da Casa. Crie sua conta com este email e entre na família: ${link}`;
+  return `https://wa.me/?text=${encodeURIComponent(message)}`;
+}
