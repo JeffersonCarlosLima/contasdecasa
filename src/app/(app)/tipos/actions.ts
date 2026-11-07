@@ -1,18 +1,18 @@
 "use server";
 
-import { and, count, eq, ne } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { categories, expenses, familyMembers, paymentMethods, recurringExpenses } from "@/db/schema";
-import { requireRole } from "@/lib/session";
+import { categories, familyMembers, paymentMethods } from "@/db/schema";
+import { InsufficientRoleError, requireRole } from "@/lib/session";
 import {
   archiveCategorySchema,
-  deletePaymentMethodSchema,
   saveCategorySchema,
   savePaymentMethodSchema,
+  setPaymentMethodArchivedSchema,
   type ArchiveCategoryInput,
-  type DeletePaymentMethodInput,
   type SaveCategoryInput,
   type SavePaymentMethodInput,
+  type SetPaymentMethodArchivedInput,
 } from "@/lib/validators/cadastros";
 
 export type ActionResult<T = Record<string, unknown>> =
@@ -167,7 +167,18 @@ export async function archiveCategory(input: string | ArchiveCategoryInput): Pro
 export async function savePaymentMethod(
   input: SavePaymentMethodInput
 ): Promise<ActionResult<{ paymentMethodId: string }>> {
-  const memberData = await requireRole("admin");
+  let memberData: Awaited<ReturnType<typeof requireRole>>;
+  try {
+    memberData = await requireRole("admin");
+  } catch (error) {
+    if (error instanceof InsufficientRoleError) {
+      return {
+        ok: false,
+        error: "Apenas administradores podem gerenciar formas de pagamento.",
+      };
+    }
+    throw error;
+  }
 
   const parsed = savePaymentMethodSchema.safeParse(input);
   if (!parsed.success) {
@@ -177,7 +188,28 @@ export async function savePaymentMethod(
     };
   }
 
-  // Validar se o membro proprietário pertence à mesma família
+  // Verificar duplicidade de nome na mesma família (case-insensitive entre não arquivadas)
+  const [duplicate] = await db
+    .select()
+    .from(paymentMethods)
+    .where(
+      and(
+        eq(paymentMethods.familyId, memberData.familyId),
+        eq(paymentMethods.archived, false),
+        sql`lower(${paymentMethods.name}) = lower(${parsed.data.name})`,
+        parsed.data.id ? ne(paymentMethods.id, parsed.data.id) : undefined
+      )
+    )
+    .limit(1);
+
+  if (duplicate) {
+    return {
+      ok: false,
+      error: "Já existe uma forma de pagamento ativa com este nome na sua família.",
+    };
+  }
+
+  // Validar se o membro proprietário pertence à mesma família e está ativo
   if (parsed.data.ownerMemberId) {
     const [owner] = await db
       .select()
@@ -186,7 +218,7 @@ export async function savePaymentMethod(
         and(
           eq(familyMembers.id, parsed.data.ownerMemberId),
           eq(familyMembers.familyId, memberData.familyId),
-          ne(familyMembers.status, "removido")
+          eq(familyMembers.status, "ativo")
         )
       )
       .limit(1);
@@ -194,7 +226,7 @@ export async function savePaymentMethod(
     if (!owner) {
       return {
         ok: false,
-        error: "O membro selecionado como proprietário não pertence a esta família.",
+        error: "O membro selecionado como proprietário não pertence a esta família ou não está ativo.",
       };
     }
   }
@@ -226,6 +258,9 @@ export async function savePaymentMethod(
           name: parsed.data.name,
           type: parsed.data.type,
           ownerMemberId: parsed.data.ownerMemberId ?? null,
+          cardLast4: parsed.data.cardLast4 ?? null,
+          closingDay: parsed.data.closingDay ?? null,
+          dueDay: parsed.data.dueDay ?? null,
           updatedAt: new Date(),
         })
         .where(
@@ -246,6 +281,10 @@ export async function savePaymentMethod(
         name: parsed.data.name,
         type: parsed.data.type,
         ownerMemberId: parsed.data.ownerMemberId ?? null,
+        archived: false,
+        cardLast4: parsed.data.cardLast4 ?? null,
+        closingDay: parsed.data.closingDay ?? null,
+        dueDay: parsed.data.dueDay ?? null,
       })
       .returning();
 
@@ -260,15 +299,27 @@ export async function savePaymentMethod(
   }
 }
 
-export async function deletePaymentMethod(input: string | DeletePaymentMethodInput): Promise<ActionResult> {
-  const memberData = await requireRole("admin");
+export async function setPaymentMethodArchived(
+  input: SetPaymentMethodArchivedInput | { id: string; archived: boolean }
+): Promise<ActionResult> {
+  let memberData: Awaited<ReturnType<typeof requireRole>>;
+  try {
+    memberData = await requireRole("admin");
+  } catch (error) {
+    if (error instanceof InsufficientRoleError) {
+      return {
+        ok: false,
+        error: "Apenas administradores podem gerenciar formas de pagamento.",
+      };
+    }
+    throw error;
+  }
 
-  const rawInput = typeof input === "string" ? { id: input } : input;
-  const parsed = deletePaymentMethodSchema.safeParse(rawInput);
+  const parsed = setPaymentMethodArchivedSchema.safeParse(input);
   if (!parsed.success) {
     return {
       ok: false,
-      error: parsed.error.issues[0]?.message ?? "ID da forma de pagamento inválido.",
+      error: parsed.error.issues[0]?.message ?? "Dados inválidos para arquivar forma de pagamento.",
     };
   }
 
@@ -286,39 +337,40 @@ export async function deletePaymentMethod(input: string | DeletePaymentMethodInp
   if (!existing) {
     return {
       ok: false,
-      error: "Forma de pagamento não encontrada ou você não tem permissão para excluí-la.",
+      error: "Forma de pagamento não encontrada ou você não tem permissão para alterá-la.",
     };
   }
 
-  // Bloquear exclusão se houver despesas vinculadas
-  const [expenseUsage] = await db
-    .select({ count: count() })
-    .from(expenses)
-    .where(eq(expenses.paymentMethodId, parsed.data.id));
+  // Ao reativar (archived: false), verificar se já existe outra forma ativa com o mesmo nome na família
+  if (!parsed.data.archived) {
+    const [duplicate] = await db
+      .select()
+      .from(paymentMethods)
+      .where(
+        and(
+          eq(paymentMethods.familyId, memberData.familyId),
+          eq(paymentMethods.archived, false),
+          sql`lower(${paymentMethods.name}) = lower(${existing.name})`,
+          ne(paymentMethods.id, existing.id)
+        )
+      )
+      .limit(1);
 
-  if (Number(expenseUsage?.count ?? 0) > 0) {
-    return {
-      ok: false,
-      error: "Não é possível excluir: esta forma de pagamento está vinculada a despesas.",
-    };
-  }
-
-  // Bloquear exclusão se houver despesas recorrentes vinculadas
-  const [recurringUsage] = await db
-    .select({ count: count() })
-    .from(recurringExpenses)
-    .where(eq(recurringExpenses.paymentMethodId, parsed.data.id));
-
-  if (Number(recurringUsage?.count ?? 0) > 0) {
-    return {
-      ok: false,
-      error: "Não é possível excluir: esta forma de pagamento está vinculada a despesas recorrentes.",
-    };
+    if (duplicate) {
+      return {
+        ok: false,
+        error: "Já existe uma forma de pagamento ativa com este nome na sua família.",
+      };
+    }
   }
 
   try {
     await db
-      .delete(paymentMethods)
+      .update(paymentMethods)
+      .set({
+        archived: parsed.data.archived,
+        updatedAt: new Date(),
+      })
       .where(
         and(
           eq(paymentMethods.id, parsed.data.id),
@@ -328,7 +380,7 @@ export async function deletePaymentMethod(input: string | DeletePaymentMethodInp
 
     return { ok: true };
   } catch (error) {
-    console.error("Erro ao excluir forma de pagamento:", error);
-    return { ok: false, error: "Ocorreu um erro ao excluir a forma de pagamento." };
+    console.error("Erro ao arquivar forma de pagamento:", error);
+    return { ok: false, error: "Ocorreu um erro ao atualizar a forma de pagamento." };
   }
 }

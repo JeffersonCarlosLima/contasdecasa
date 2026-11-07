@@ -16,10 +16,18 @@ export async function listCategories(familyId: string) {
     .orderBy(categories.name);
 }
 
-export async function listPaymentMethods(familyId: string) {
+export async function listPaymentMethods(
+  familyId: string,
+  options?: { includeArchived?: boolean }
+) {
+  const conditions = [eq(paymentMethods.familyId, familyId)];
+  if (!options?.includeArchived) {
+    conditions.push(eq(paymentMethods.archived, false));
+  }
+
   return db
     .select()
     .from(paymentMethods)
-    .where(eq(paymentMethods.familyId, familyId))
+    .where(and(...conditions))
     .orderBy(paymentMethods.name);
 }

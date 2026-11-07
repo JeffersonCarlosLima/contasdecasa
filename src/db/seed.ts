@@ -98,11 +98,33 @@ export const SEED_CATEGORIES = [
   { name: "Saúde e academia", color: "chart-6" as const, nature: "fixa" as const },
 ];
 
-export const SEED_PAYMENT_METHODS = [
-  { name: "Cartão Bradesco", type: "cartao" as const, ownerName: "Jefferson" },
-  { name: "Cartão Inter", type: "cartao" as const, ownerName: "Jefferson" },
-  { name: "Conta Corrente", type: "conta" as const, ownerName: null },
-  { name: "Pix", type: "pix" as const, ownerName: null },
+export interface SeedPaymentMethodData {
+  name: string;
+  type: "cartao" | "conta" | "pix" | "dinheiro";
+  ownerName: string | null;
+  cardLast4?: string | null;
+  closingDay?: number | null;
+  dueDay?: number | null;
+}
+
+export const SEED_PAYMENT_METHODS: SeedPaymentMethodData[] = [
+  {
+    name: "Cartão Nubank",
+    type: "cartao",
+    ownerName: "Jefferson",
+    cardLast4: "1234",
+    closingDay: 5,
+    dueDay: 15,
+  },
+  {
+    name: "Conta Bradesco",
+    type: "conta",
+    ownerName: "Lorrane",
+  },
+  { name: "Cartão Bradesco", type: "cartao", ownerName: "Jefferson" },
+  { name: "Cartão Inter", type: "cartao", ownerName: "Jefferson" },
+  { name: "Conta Corrente", type: "conta", ownerName: null },
+  { name: "Pix", type: "pix", ownerName: null },
 ];
 
 export const SEED_EXPENSES: SeedExpenseDefinition[] = [
@@ -473,6 +495,10 @@ export async function runSeed(customDbUrl?: string) {
             name: pm.name,
             type: pm.type,
             ownerMemberId: ownerId,
+            archived: false,
+            cardLast4: pm.cardLast4 ?? null,
+            closingDay: pm.closingDay ?? null,
+            dueDay: pm.dueDay ?? null,
           })
           .returning();
         if (!created) throw new Error(`Falha ao criar forma de pagamento ${pm.name}`);

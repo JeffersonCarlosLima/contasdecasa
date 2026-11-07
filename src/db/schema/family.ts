@@ -1,7 +1,10 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   integer,
   pgTable,
+  smallint,
   text,
   timestamp,
   unique,
@@ -87,13 +90,38 @@ export const categories = pgTable(
   (t) => [unique("categories_family_name_uq").on(t.familyId, t.name)],
 );
 
-export const paymentMethods = pgTable("payment_methods", {
-  id: id(),
-  familyId: uuid("family_id")
-    .notNull()
-    .references(() => families.id, { onDelete: "cascade" }),
-  name: text("name").notNull(),
-  type: paymentType("type").notNull().default("conta"),
-  ownerMemberId: uuid("owner_member_id").references(() => familyMembers.id),
-  ...timestamps,
-});
+export const paymentMethods = pgTable(
+  "payment_methods",
+  {
+    id: id(),
+    familyId: uuid("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    type: paymentType("type").notNull().default("conta"),
+    ownerMemberId: uuid("owner_member_id").references(() => familyMembers.id),
+    archived: boolean("archived").notNull().default(false),
+    cardLast4: text("card_last4"),
+    closingDay: smallint("closing_day"),
+    dueDay: smallint("due_day"),
+    ...timestamps,
+  },
+  (t) => [
+    check(
+      "payment_methods_card_last4_chk",
+      sql`${t.cardLast4} is null or ${t.cardLast4} ~ '^[0-9]{4}$'`,
+    ),
+    check(
+      "payment_methods_closing_day_chk",
+      sql`${t.closingDay} is null or (${t.closingDay} >= 1 and ${t.closingDay} <= 31)`,
+    ),
+    check(
+      "payment_methods_due_day_chk",
+      sql`${t.dueDay} is null or (${t.dueDay} >= 1 and ${t.dueDay} <= 31)`,
+    ),
+    check(
+      "payment_methods_both_days_chk",
+      sql`(${t.closingDay} is null and ${t.dueDay} is null) or (${t.closingDay} is not null and ${t.dueDay} is not null)`,
+    ),
+  ],
+);

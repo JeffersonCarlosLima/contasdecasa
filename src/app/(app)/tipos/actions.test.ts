@@ -2,9 +2,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-vi.mock("@/lib/session", () => ({
-  requireRole: vi.fn(),
-}));
+vi.mock("@/lib/session", () => {
+  class MockInsufficientRoleError extends Error {
+    constructor(currentRole: string, minRole: string) {
+      super(`Acesso negado: papel "${currentRole}" insuficiente para o mínimo "${minRole}".`);
+      this.name = "InsufficientRoleError";
+    }
+  }
+
+  return {
+    requireRole: vi.fn(),
+    InsufficientRoleError: MockInsufficientRoleError,
+  };
+});
 
 vi.mock("@/db", () => ({
   db: {
@@ -16,12 +26,12 @@ vi.mock("@/db", () => ({
 }));
 
 import { db } from "@/db";
-import { requireRole } from "@/lib/session";
+import { InsufficientRoleError, requireRole } from "@/lib/session";
 import {
   archiveCategory,
-  deletePaymentMethod,
   saveCategory,
   savePaymentMethod,
+  setPaymentMethodArchived,
 } from "./actions";
 
 describe("tipos actions", () => {
@@ -163,7 +173,129 @@ describe("tipos actions", () => {
   });
 
   describe("savePaymentMethod", () => {
-    it("impede vincular dono que não é da mesma família", async () => {
+    it("rejeita nome vazio", async () => {
+      const res = await savePaymentMethod({
+        name: "   ",
+        type: "cartao",
+      });
+      expect(res.ok).toBe(false);
+      expect(res).toHaveProperty("error");
+    });
+
+    it("rejeita tipo inválido", async () => {
+      const res = await savePaymentMethod({
+        name: "Cartão",
+        // @ts-expect-error teste de tipo inválido em tempo de execução
+        type: "cheque",
+      });
+      expect(res.ok).toBe(false);
+      expect(res).toHaveProperty("error");
+    });
+
+    it("rejeita dia fora de 1-31", async () => {
+      const res = await savePaymentMethod({
+        name: "Cartão",
+        type: "cartao",
+        closingDay: 32,
+        dueDay: 10,
+      });
+      expect(res.ok).toBe(false);
+      expect(res).toHaveProperty("error");
+    });
+
+    it("rejeita quando só um dos dias é informado", async () => {
+      const res = await savePaymentMethod({
+        name: "Cartão",
+        type: "cartao",
+        closingDay: 5,
+      });
+      expect(res.ok).toBe(false);
+      expect(res).toHaveProperty("error");
+    });
+
+    it("rejeita final do cartão inválido", async () => {
+      const res = await savePaymentMethod({
+        name: "Cartão",
+        type: "cartao",
+        cardLast4: "123a",
+      });
+      expect(res.ok).toBe(false);
+      expect(res).toHaveProperty("error");
+    });
+
+    it("membro comum não escreve (impede ação sem papel admin/dono)", async () => {
+      vi.mocked(requireRole).mockRejectedValueOnce(
+        new InsufficientRoleError("membro", "admin")
+      );
+
+      const res = await savePaymentMethod({
+        name: "Cartão Jefferson",
+        type: "cartao",
+      });
+
+      expect(res.ok).toBe(false);
+      expect(res).toHaveProperty("error");
+      expect(db.insert).not.toHaveBeenCalled();
+    });
+
+    it("impede duplicação de nome case-insensitive entre formas ativas", async () => {
+      // Simula que já existe "nubank" ativo
+      vi.mocked(db.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([{ id: "pm_existente", name: "nubank" }]),
+          }),
+        }),
+      } as unknown as ReturnType<typeof db.select>);
+
+      const res = await savePaymentMethod({
+        name: "NUBANK",
+        type: "cartao",
+      });
+
+      expect(res).toEqual({
+        ok: false,
+        error: "Já existe uma forma de pagamento ativa com este nome na sua família.",
+      });
+      expect(db.insert).not.toHaveBeenCalled();
+    });
+
+    it("permite reúso de nome se a forma com mesmo nome estiver arquivada", async () => {
+      // Query busca ativas (archived: false), logo retorna vazio se só existe arquivada
+      vi.mocked(db.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([]),
+          }),
+        }),
+      } as unknown as ReturnType<typeof db.select>);
+
+      vi.mocked(db.insert).mockReturnValueOnce({
+        values: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([{ id: validUuid }]),
+        }),
+      } as unknown as ReturnType<typeof db.insert>);
+
+      const res = await savePaymentMethod({
+        name: "Nubank",
+        type: "cartao",
+      });
+
+      expect(res).toEqual({ ok: true, paymentMethodId: validUuid });
+      expect(db.insert).toHaveBeenCalled();
+    });
+
+    it("impede vincular dono que não é da mesma família ou não está ativo", async () => {
+      // 1. Check duplicate -> ok
+      vi.mocked(db.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([]),
+          }),
+        }),
+      } as unknown as ReturnType<typeof db.select>);
+
+      // 2. Check owner -> não encontrado ativo na família
       vi.mocked(db.select).mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
@@ -180,104 +312,272 @@ describe("tipos actions", () => {
 
       expect(res).toEqual({
         ok: false,
-        error: "O membro selecionado como proprietário não pertence a esta família.",
+        error: "O membro selecionado como proprietário não pertence a esta família ou não está ativo.",
       });
     });
 
-    it("cria nova forma de pagamento com sucesso", async () => {
-      vi.mocked(db.insert).mockReturnValueOnce({
-        values: vi.fn().mockReturnValue({
-          returning: vi.fn().mockResolvedValue([{ id: validUuid }]),
+    it("respeita isolamento por family_id ao salvar forma de pagamento", async () => {
+      // 1. Check duplicate
+      vi.mocked(db.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([]),
+          }),
         }),
+      } as unknown as ReturnType<typeof db.select>);
+
+      // 2. Insert values
+      const insertValuesSpy = vi.fn().mockReturnValue({
+        returning: vi.fn().mockResolvedValue([{ id: validUuid }]),
+      });
+      vi.mocked(db.insert).mockReturnValueOnce({
+        values: insertValuesSpy,
       } as unknown as ReturnType<typeof db.insert>);
 
       const res = await savePaymentMethod({
-        name: "Pix Banco X",
-        type: "pix",
+        name: "Nubank",
+        type: "cartao",
+        cardLast4: "1234",
+        closingDay: 5,
+        dueDay: 15,
       });
+
       expect(res).toEqual({ ok: true, paymentMethodId: validUuid });
+      expect(insertValuesSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          familyId: "fam_123",
+          name: "Nubank",
+          type: "cartao",
+          archived: false,
+          cardLast4: "1234",
+          closingDay: 5,
+          dueDay: 15,
+        })
+      );
+    });
+
+    it("zera campos de cartão quando tipo não é cartão ao persistir", async () => {
+      // 1. Check duplicate
+      vi.mocked(db.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([]),
+          }),
+        }),
+      } as unknown as ReturnType<typeof db.select>);
+
+      // 2. Insert values
+      const insertValuesSpy = vi.fn().mockReturnValue({
+        returning: vi.fn().mockResolvedValue([{ id: validUuid }]),
+      });
+      vi.mocked(db.insert).mockReturnValueOnce({
+        values: insertValuesSpy,
+      } as unknown as ReturnType<typeof db.insert>);
+
+      const res = await savePaymentMethod({
+        name: "Conta Corrente",
+        type: "conta",
+        cardLast4: "1234",
+        closingDay: 5,
+        dueDay: 15,
+      });
+
+      expect(res).toEqual({ ok: true, paymentMethodId: validUuid });
+      expect(insertValuesSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          familyId: "fam_123",
+          name: "Conta Corrente",
+          type: "conta",
+          cardLast4: null,
+          closingDay: null,
+          dueDay: null,
+        })
+      );
+    });
+
+    it("atualiza forma de pagamento existente da família", async () => {
+      // 1. Check duplicate
+      vi.mocked(db.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([]),
+          }),
+        }),
+      } as unknown as ReturnType<typeof db.select>);
+
+      // 2. Check existing
+      vi.mocked(db.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([{ id: validUuid }]),
+          }),
+        }),
+      } as unknown as ReturnType<typeof db.select>);
+
+      // 3. Update
+      const setSpy = vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue([]),
+      });
+      vi.mocked(db.update).mockReturnValueOnce({
+        set: setSpy,
+      } as unknown as ReturnType<typeof db.update>);
+
+      const res = await savePaymentMethod({
+        id: validUuid,
+        name: "Nubank Atualizado",
+        type: "cartao",
+        cardLast4: "4321",
+        closingDay: 10,
+        dueDay: 20,
+      });
+
+      expect(res).toEqual({ ok: true, paymentMethodId: validUuid });
+      expect(setSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "Nubank Atualizado",
+          type: "cartao",
+          cardLast4: "4321",
+          closingDay: 10,
+          dueDay: 20,
+        })
+      );
     });
   });
 
-  describe("deletePaymentMethod", () => {
-    it("bloqueia exclusão se houver despesas vinculadas", async () => {
-      vi.mocked(db.select)
-        .mockReturnValueOnce({
-          from: vi.fn().mockReturnValue({
-            where: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue([{ id: validUuid }]),
-            }),
+  describe("setPaymentMethodArchived", () => {
+    it("arquiva forma de pagamento da própria família", async () => {
+      vi.mocked(db.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([{ id: validUuid, name: "Nubank" }]),
           }),
-        } as unknown as ReturnType<typeof db.select>)
-        .mockReturnValueOnce({
-          from: vi.fn().mockReturnValue({
-            where: vi.fn().mockResolvedValue([{ count: 2 }]),
-          }),
-        } as unknown as ReturnType<typeof db.select>);
+        }),
+      } as unknown as ReturnType<typeof db.select>);
 
-      const res = await deletePaymentMethod(validUuid);
-      expect(res).toEqual({
-        ok: false,
-        error: "Não é possível excluir: esta forma de pagamento está vinculada a despesas.",
-      });
-      expect(db.delete).not.toHaveBeenCalled();
-    });
-
-    it("bloqueia exclusão se houver despesas recorrentes vinculadas", async () => {
-      vi.mocked(db.select)
-        .mockReturnValueOnce({
-          from: vi.fn().mockReturnValue({
-            where: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue([{ id: validUuid }]),
-            }),
-          }),
-        } as unknown as ReturnType<typeof db.select>)
-        .mockReturnValueOnce({
-          from: vi.fn().mockReturnValue({
-            where: vi.fn().mockResolvedValue([{ count: 0 }]),
-          }),
-        } as unknown as ReturnType<typeof db.select>)
-        .mockReturnValueOnce({
-          from: vi.fn().mockReturnValue({
-            where: vi.fn().mockResolvedValue([{ count: 1 }]),
-          }),
-        } as unknown as ReturnType<typeof db.select>);
-
-      const res = await deletePaymentMethod(validUuid);
-      expect(res).toEqual({
-        ok: false,
-        error: "Não é possível excluir: esta forma de pagamento está vinculada a despesas recorrentes.",
-      });
-      expect(db.delete).not.toHaveBeenCalled();
-    });
-
-    it("exclui com sucesso quando não há despesas vinculadas", async () => {
-      vi.mocked(db.select)
-        .mockReturnValueOnce({
-          from: vi.fn().mockReturnValue({
-            where: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue([{ id: validUuid }]),
-            }),
-          }),
-        } as unknown as ReturnType<typeof db.select>)
-        .mockReturnValueOnce({
-          from: vi.fn().mockReturnValue({
-            where: vi.fn().mockResolvedValue([{ count: 0 }]),
-          }),
-        } as unknown as ReturnType<typeof db.select>)
-        .mockReturnValueOnce({
-          from: vi.fn().mockReturnValue({
-            where: vi.fn().mockResolvedValue([{ count: 0 }]),
-          }),
-        } as unknown as ReturnType<typeof db.select>);
-
-      vi.mocked(db.delete).mockReturnValueOnce({
+      const setSpy = vi.fn().mockReturnValue({
         where: vi.fn().mockResolvedValue([]),
-      } as unknown as ReturnType<typeof db.delete>);
+      });
+      vi.mocked(db.update).mockReturnValueOnce({
+        set: setSpy,
+      } as unknown as ReturnType<typeof db.update>);
 
-      const res = await deletePaymentMethod(validUuid);
+      const res = await setPaymentMethodArchived({
+        id: validUuid,
+        archived: true,
+      });
+
       expect(res).toEqual({ ok: true });
-      expect(db.delete).toHaveBeenCalled();
+      expect(setSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          archived: true,
+        })
+      );
+    });
+
+    it("impede reativar forma cujo nome já está em uso por outra ativa", async () => {
+      // 1. Busca forma existente (arquivada)
+      vi.mocked(db.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([{ id: validUuid, name: "Nubank" }]),
+          }),
+        }),
+      } as unknown as ReturnType<typeof db.select>);
+
+      // 2. Busca duplicata ativa com o mesmo nome -> encontra outra ativa
+      vi.mocked(db.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([{ id: "outra_forma", name: "nubank" }]),
+          }),
+        }),
+      } as unknown as ReturnType<typeof db.select>);
+
+      const res = await setPaymentMethodArchived({
+        id: validUuid,
+        archived: false,
+      });
+
+      expect(res).toEqual({
+        ok: false,
+        error: "Já existe uma forma de pagamento ativa com este nome na sua família.",
+      });
+      expect(db.update).not.toHaveBeenCalled();
+    });
+
+    it("permite reativar forma quando nome está livre", async () => {
+      // 1. Busca forma existente
+      vi.mocked(db.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([{ id: validUuid, name: "Nubank" }]),
+          }),
+        }),
+      } as unknown as ReturnType<typeof db.select>);
+
+      // 2. Busca duplicata ativa -> não encontra
+      vi.mocked(db.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([]),
+          }),
+        }),
+      } as unknown as ReturnType<typeof db.select>);
+
+      const setSpy = vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue([]),
+      });
+      vi.mocked(db.update).mockReturnValueOnce({
+        set: setSpy,
+      } as unknown as ReturnType<typeof db.update>);
+
+      const res = await setPaymentMethodArchived({
+        id: validUuid,
+        archived: false,
+      });
+
+      expect(res).toEqual({ ok: true });
+      expect(setSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          archived: false,
+        })
+      );
+    });
+
+    it("rejeita arquivar se não pertencer à família", async () => {
+      vi.mocked(db.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([]),
+          }),
+        }),
+      } as unknown as ReturnType<typeof db.select>);
+
+      const res = await setPaymentMethodArchived({
+        id: validUuid,
+        archived: true,
+      });
+
+      expect(res).toEqual({
+        ok: false,
+        error: "Forma de pagamento não encontrada ou você não tem permissão para alterá-la.",
+      });
+      expect(db.update).not.toHaveBeenCalled();
+    });
+
+    it("impede que membro comum arquive forma de pagamento", async () => {
+      vi.mocked(requireRole).mockRejectedValueOnce(
+        new InsufficientRoleError("membro", "admin")
+      );
+
+      const res = await setPaymentMethodArchived({
+        id: validUuid,
+        archived: true,
+      });
+
+      expect(res.ok).toBe(false);
+      expect(res).toHaveProperty("error");
+      expect(db.update).not.toHaveBeenCalled();
     });
   });
 });
