@@ -1,0 +1,9 @@
+Extrato de Conta Corrente - Bradesco
+Data;Histórico;Docto.;Crédito (R$);Débito (R$);Saldo (R$)
+02/11/26;SALDO INICIAL;000000;1000,00; ;1000,00
+03/11/26;TED C SAL EMPRESA XYZ;112233;5000,00; ;6000,00
+05/11/26;PGTO ELETRON COELBA;445566; ;180,50;5819,50
+07/11/26;MERCADO EXTRA PARC 01/03;778899; ;250,00;5569,50
+
+Total Geral: 5569,50
+Lançamentos periódicos
