@@ -183,55 +183,57 @@ export async function inviteMember(
       return { ok: false, error: rateLimitCheck.reason! };
     }
 
-    // 2. Verifica se o email já é membro ativo na família
-    const [existingUser] = await db
-      .select({ id: user.id })
-      .from(user)
-      .where(eq(user.email, data.email))
-      .limit(1);
+    // 2. Se houver email, verifica se o email já é membro ativo na família
+    if (data.email) {
+      const [existingUser] = await db
+        .select({ id: user.id })
+        .from(user)
+        .where(eq(user.email, data.email))
+        .limit(1);
 
-    if (existingUser) {
-      const [existingMember] = await db
-        .select({ id: familyMembers.id })
-        .from(familyMembers)
+      if (existingUser) {
+        const [existingMember] = await db
+          .select({ id: familyMembers.id })
+          .from(familyMembers)
+          .where(
+            and(
+              eq(familyMembers.familyId, sessionMember.familyId),
+              eq(familyMembers.userId, existingUser.id),
+              eq(familyMembers.status, "ativo"),
+            ),
+          )
+          .limit(1);
+
+        if (existingMember) {
+          return { ok: false, error: "Este email já pertence a um membro ativo desta família." };
+        }
+      }
+
+      // 3. Verifica se já existe convite pendente e válido para este email nesta família
+      const now = new Date();
+      const [pendingInvite] = await db
+        .select({ id: familyInvites.id })
+        .from(familyInvites)
         .where(
           and(
-            eq(familyMembers.familyId, sessionMember.familyId),
-            eq(familyMembers.userId, existingUser.id),
-            eq(familyMembers.status, "ativo"),
+            eq(familyInvites.familyId, sessionMember.familyId),
+            eq(familyInvites.email, data.email),
+            isNull(familyInvites.acceptedAt),
+            gt(familyInvites.expiresAt, now),
           ),
         )
         .limit(1);
 
-      if (existingMember) {
-        return { ok: false, error: "Este email já pertence a um membro ativo desta família." };
+      if (pendingInvite) {
+        return { ok: false, error: "Já existe um convite pendente para este email nesta família." };
       }
-    }
-
-    // 3. Verifica se já existe convite pendente e válido para este email nesta família
-    const now = new Date();
-    const [pendingInvite] = await db
-      .select({ id: familyInvites.id })
-      .from(familyInvites)
-      .where(
-        and(
-          eq(familyInvites.familyId, sessionMember.familyId),
-          eq(familyInvites.email, data.email),
-          isNull(familyInvites.acceptedAt),
-          gt(familyInvites.expiresAt, now),
-        ),
-      )
-      .limit(1);
-
-    if (pendingInvite) {
-      return { ok: false, error: "Já existe um convite pendente para este email nesta família." };
     }
 
     // 4. Cria o convite com token aleatório e guarda apenas o hash
     const { token, tokenHash, expiresAt } = createInviteToken();
     await db.insert(familyInvites).values({
       familyId: sessionMember.familyId,
-      email: data.email,
+      email: data.email ?? null,
       role: data.role,
       kinship: data.kinship,
       participatesInSplit: data.participatesInSplit,
@@ -242,18 +244,20 @@ export async function inviteMember(
 
     const link = inviteLink(token);
 
-    // 5. Envia email se SMTP estiver configurado (sem falhar a action caso dê erro de rede)
-    const [fam] = await db
-      .select({ name: families.name })
-      .from(families)
-      .where(eq(families.id, sessionMember.familyId))
-      .limit(1);
+    // 5. Envia email se houver email informado e SMTP estiver configurado (sem falhar a action caso dê erro de rede)
+    if (data.email) {
+      const [fam] = await db
+        .select({ name: families.name })
+        .from(families)
+        .where(eq(families.id, sessionMember.familyId))
+        .limit(1);
 
-    await sendInviteEmail({
-      to: data.email,
-      familyName: fam?.name || "Família",
-      link,
-    }).catch(() => null);
+      await sendInviteEmail({
+        to: data.email,
+        familyName: fam?.name || "Família",
+        link,
+      }).catch(() => null);
+    }
 
     return { ok: true, link };
   } catch (err: unknown) {
@@ -304,17 +308,19 @@ export async function resendInvite(
 
     const link = inviteLink(token);
 
-    const [fam] = await db
-      .select({ name: families.name })
-      .from(families)
-      .where(eq(families.id, sessionMember.familyId))
-      .limit(1);
+    if (invite.email) {
+      const [fam] = await db
+        .select({ name: families.name })
+        .from(families)
+        .where(eq(families.id, sessionMember.familyId))
+        .limit(1);
 
-    await sendInviteEmail({
-      to: invite.email,
-      familyName: fam?.name || "Família",
-      link,
-    }).catch(() => null);
+      await sendInviteEmail({
+        to: invite.email,
+        familyName: fam?.name || "Família",
+        link,
+      }).catch(() => null);
+    }
 
     return { ok: true, link };
   } catch (err: unknown) {

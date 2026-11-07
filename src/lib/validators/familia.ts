@@ -10,10 +10,13 @@ export const renameFamilySchema = z.object({
 
 export const inviteMemberSchema = z.object({
   email: z
-    .string({ message: "Email é obrigatório" })
+    .string()
     .trim()
+    .toLowerCase()
     .email("Email inválido")
-    .toLowerCase(),
+    .nullish()
+    .or(z.literal("").transform(() => undefined))
+    .transform((val) => val || undefined),
   role: z
     .enum(["admin", "membro"] as const, {
       message: "O papel deve ser admin ou membro",
@@ -79,7 +82,7 @@ export const transferOwnershipSchema = z.object({
 });
 
 export type RenameFamilyInput = z.infer<typeof renameFamilySchema>;
-export type InviteMemberInput = z.infer<typeof inviteMemberSchema>;
+export type InviteMemberInput = z.input<typeof inviteMemberSchema>;
 export type ResendInviteInput = z.infer<typeof resendInviteSchema>;
 export type CancelInviteInput = z.infer<typeof cancelInviteSchema>;
 export type AddDependentInput = z.infer<typeof addDependentSchema>;

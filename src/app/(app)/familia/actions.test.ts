@@ -290,6 +290,40 @@ describe("Server Actions da Família", () => {
     }
   });
 
+  it("inviteMember cria convite sem email e retorna link sem chamar envio de email", async () => {
+    vi.mocked(requireRole).mockResolvedValue(mockAdminContext);
+
+    vi.mocked(db.select).mockReturnValueOnce({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue([{ total: 0 }]),
+      }),
+    } as unknown as ReturnType<typeof db.select>);
+
+    const insertValues = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(db.insert).mockReturnValue({
+      values: insertValues,
+    } as unknown as ReturnType<typeof db.insert>);
+
+    const res = await inviteMember({
+      role: "membro",
+      kinship: "outro",
+      participatesInSplit: true,
+    });
+
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.link).toMatch(/\/convite\//);
+    }
+    expect(insertValues).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: null,
+        role: "membro",
+        kinship: "outro",
+        participatesInSplit: true,
+      }),
+    );
+  });
+
   it("resendInvite atualiza token e retorna novo link", async () => {
     vi.mocked(requireRole).mockResolvedValue(mockAdminContext);
 

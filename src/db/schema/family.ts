@@ -57,7 +57,7 @@ export const familyInvites = pgTable("family_invites", {
   familyId: uuid("family_id")
     .notNull()
     .references(() => families.id, { onDelete: "cascade" }),
-  email: text("email").notNull(),
+  email: text("email"),
   role: memberRole("role").notNull().default("membro"),
   kinship: kinship("kinship").notNull().default("outro"),
   participatesInSplit: boolean("participates_in_split").notNull().default(true),
