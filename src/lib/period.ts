@@ -13,12 +13,13 @@ export class MonthClosedError extends Error {
 }
 
 /**
- * Normaliza formato "AAAA-MM" para "AAAA-MM-01" exigido pelo campo date do banco.
+ * Normaliza formato "AAAA-MM" ou "AAAA-MM-DD" para "AAAA-MM-01" exigido pelo campo date do banco.
  */
 export function toMonthDate(month: string): string {
   const clean = month.trim();
-  if (/^\d{4}-(0[1-9]|1[0-2])$/.test(clean)) {
-    return `${clean}-01`;
+  const match = clean.match(/^(\d{4}-(?:0[1-9]|1[0-2]))/);
+  if (match) {
+    return `${match[1]}-01`;
   }
   return clean;
 }

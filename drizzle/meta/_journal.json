@@ -29,6 +29,13 @@
       "when": 1794069688477,
       "tag": "0003_lean_ricochet",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794085872877,
+      "tag": "0004_tranquil_gauntlet",
+      "breakpoints": true
     }
   ]
 }

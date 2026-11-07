@@ -25,7 +25,15 @@ describe("period", () => {
   describe("utilitários de conversão de data", () => {
     it("toMonthDate converte AAAA-MM para AAAA-MM-01", () => {
       expect(toMonthDate("2026-11")).toBe("2026-11-01");
-      expect(toMonthDate("2026-01-01")).toBe("2026-01-01");
+      expect(toMonthDate("2026-01")).toBe("2026-01-01");
+    });
+
+    it("toMonthDate converte AAAA-MM-DD para AAAA-MM-01 (qualquer dia do mês)", () => {
+      expect(toMonthDate("2026-11-01")).toBe("2026-11-01");
+      expect(toMonthDate("2026-11-02")).toBe("2026-11-01");
+      expect(toMonthDate("2026-11-15")).toBe("2026-11-01");
+      expect(toMonthDate("2026-11-30")).toBe("2026-11-01");
+      expect(toMonthDate("2026-02-28")).toBe("2026-02-01");
     });
 
     it("toMonthKey converte AAAA-MM-01 para AAAA-MM", () => {

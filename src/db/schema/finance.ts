@@ -123,5 +123,9 @@ export const expenses = pgTable(
     uniqueIndex("expenses_family_fingerprint_uq")
       .on(t.familyId, t.fingerprint)
       .where(sql`${t.fingerprint} is not null and ${t.deletedAt} is null`),
+    check(
+      "expenses_reference_month_day1",
+      sql`extract(day from ${t.referenceMonth}) = 1`,
+    ),
   ],
 );
