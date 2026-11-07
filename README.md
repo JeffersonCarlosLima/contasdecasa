@@ -43,6 +43,14 @@ pnpm db:seed        # família de exemplo (2 membros + um mês de despesas) — 
 pnpm dev            # http://localhost:3000
 ```
 
+### Usuários de teste do Seed
+
+O comando `pnpm db:seed` popula o banco de desenvolvimento com a família de exemplo e os usuários:
+
+- **Jefferson:** `jefferson@exemplo.com` · Senha: `senha-dev-contas` (dono)
+- **Lorrane:** `lorrane@exemplo.com` · Senha: `senha-dev-contas` (admin)
+- **Filho(a):** dependente sem login (fora da divisão)
+
 ## Scripts
 
 | Comando | O que faz |
