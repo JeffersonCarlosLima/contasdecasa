@@ -1,88 +1,156 @@
 # Contas da Casa
 
-App web de finanças da família (substitui a planilha "Contas do mês"): salários e extras por mês,
-investimento, despesas com dono/categoria/vencimento/parcelas/recorrência, dashboard com renda,
-disponível, gasto, sobra e a divisão entre os membros.
+App web de gestão financeira familiar colaborativa (substitui a planilha "Contas do mês"):
+salários e rendas extras consolidados por competência, investimentos planejados, despesas com responsável/categoria/vencimento/parcelamento/recorrência, importação e conciliação de extratos bancários com detecção de fatura de cartão de crédito, e fechamento mensal com divisão proporcional à renda ou regras customizadas.
 
-Stack: Next.js 15 (App Router) · TypeScript estrito · PostgreSQL · Drizzle ORM · Better Auth ·
-Tailwind v4 · Recharts · Vitest · pnpm.
+---
 
-> **Para quem vai desenvolver:** leia [`docs/README.md`](docs/README.md). As telas em
-> [`docs/interfaces`](docs/interfaces/README.md) são **contrato de seguimento obrigatório à risca**.
-> O plano de trabalho está em [`docs/tasks`](docs/tasks/README.md).
+## Stack Tecnológica
 
-## Requisitos
+- **Framework:** [Next.js 15](https://nextjs.org/) (App Router, React 19 Server Components e Server Actions)
+- **Linguagem:** [TypeScript](https://www.typescriptlang.org/) (modo estrito)
+- **Banco de Dados:** [PostgreSQL](https://www.postgresql.org/) (schema `public`, sem migrations manuais)
+- **ORM & Migrations:** [Drizzle ORM](https://orm.drizzle.team/) & `drizzle-kit`
+- **Autenticação:** [Better Auth](https://www.better-auth.com/) (sessões seguras por cookie HTTP-only)
+- **Estilização & Design System:** [Tailwind CSS v4](https://tailwindcss.com/) com tokens semânticos em variáveis CSS (`var(--...)`) e ícones [Lucide React](https://lucide.dev/)
+- **Visualização de Dados:** [Recharts](https://recharts.org/)
+- **Validação de Schemas:** [Zod](https://zod.dev/)
+- **Testes & Qualidade:** [Vitest](https://vitest.dev/) e ESLint
+- **Gerenciador de Pacotes:** [pnpm](https://pnpm.io/) (v10 via Corepack)
 
-- Node.js 22+ e pnpm 10 (`corepack enable`)
-- Um PostgreSQL acessível, com um banco dedicado (ex.: `financas`)
+---
 
-## 1. Configurar o banco
+## Como Rodar Localmente
 
-Crie o banco uma vez no seu servidor (o app usa **um único banco**, schema `public`):
+### 1. Pré-requisitos
 
-```sql
-CREATE DATABASE financas;
-```
+- Node.js 22+ (`node -v`)
+- pnpm 10 habilitado (`corepack enable`)
+- Instância PostgreSQL ativa com banco criado (ex.: `financas`)
 
-Copie `.env.example` para `.env` e preencha:
+### 2. Configurar Variáveis de Ambiente
+
+Copie o modelo de ambiente:
 
 ```bash
 cp .env.example .env
-# DATABASE_URL=postgres://usuario:senha@host:5432/financas
-# BETTER_AUTH_SECRET=$(openssl rand -base64 32)
-# BETTER_AUTH_URL=http://localhost:3000   APP_URL=http://localhost:3000
-# SMTP_* é opcional: sem SMTP o link de convite aparece na tela para copiar.
 ```
 
-## 2. Rodar em desenvolvimento
+Edite o arquivo `.env` preenchendo as configurações locais:
+
+```env
+DATABASE_URL=postgres://usuario:senha@localhost:5432/financas
+BETTER_AUTH_SECRET=gere_uma_chave_aleatoria_com_openssl_rand_base64_32
+BETTER_AUTH_URL=http://localhost:3000
+APP_URL=http://localhost:3000
+APP_PORT=3000
+# SMTP é opcional: se vazio, links de convite são gerados para cópia manual na tela.
+```
+
+> [!CAUTION]
+> **Segurança & Segredos:**
+> Nunca comite credenciais, senhas, tokens ou o arquivo `.env` no repositório Git (já protegido via `.gitignore`).
+> Informações sensíveis de infraestrutura (como IP do servidor de produção e caminho de chaves SSH) nunca devem constar no versionamento; utilize variáveis lidas exclusivamente do seu ambiente local (`DEPLOY_HOST` e `DEPLOY_SSH_KEY`).
+
+### 3. Instalar Dependências e Banco de Dados
 
 ```bash
+# Instala pacotes
 pnpm install
-pnpm db:migrate     # aplica as migrations de drizzle/ no banco de DATABASE_URL
-pnpm db:seed        # família de exemplo (2 membros + um mês de despesas) — ver docs/tasks/09-seed.md
-pnpm dev            # http://localhost:3000
+
+# Aplica as migrations versionadas ao PostgreSQL
+pnpm db:migrate
+
+# Popula o banco com a família de exemplo e lançamentos de demonstração
+pnpm db:seed
 ```
 
-### Usuários de teste do Seed
-
-O comando `pnpm db:seed` popula o banco de desenvolvimento com a família de exemplo e os usuários:
-
-- **Jefferson:** `jefferson@exemplo.com` · Senha: `senha-dev-contas` (dono)
-- **Lorrane:** `lorrane@exemplo.com` · Senha: `senha-dev-contas` (admin)
-- **Filho(a):** dependente sem login (fora da divisão)
-
-## Scripts
-
-| Comando | O que faz |
-| --- | --- |
-| `pnpm dev` / `build` / `start` | Next.js |
-| `pnpm test` | Vitest (regras de cálculo em `src/lib/calc`) |
-| `pnpm lint` / `pnpm typecheck` | ESLint e `tsc --noEmit` |
-| `pnpm db:generate` | Gera nova migration a partir do schema (`src/db/schema`) |
-| `pnpm db:migrate` | Aplica as migrations |
-| `pnpm db:seed` | Dados de exemplo |
-| `pnpm tokens` | Regenera `src/styles/tokens.css` de `docs/design/tokens.json` |
-
-Mudou o schema? `pnpm db:generate`, revise o SQL em `drizzle/`, commite e rode `pnpm db:migrate`.
-
-## 3. Publicar com Docker (ex.: CasaOS)
-
-O `Dockerfile` e o `compose.yaml` cobrem só o app (porta 3000); o Postgres é externo.
+### 4. Executar o Servidor de Desenvolvimento
 
 ```bash
-cp .env.example .env            # DATABASE_URL apontando para o seu Postgres
-docker compose run --rm migrate # aplica as migrations (perfil "tools")
-docker compose up -d --build    # sobe o app em http://servidor:3000
+pnpm dev
 ```
 
-No CasaOS, importe o `compose.yaml` como app personalizado e defina as variáveis do `.env`
-(`DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `APP_URL`). `BETTER_AUTH_URL`/`APP_URL`
-devem ser a URL pela qual vocês acessam o app.
+Acesse a aplicação em [http://localhost:3000](http://localhost:3000).
 
-## Estrutura
+---
+
+## Usuários de Teste (Seed de Desenvolvimento)
+
+Ao rodar `pnpm db:seed`, o ambiente é inicializado com a **Família Lima** e os seguintes acessos (senha padrão para todos em dev: `senha-dev-contas`):
+
+| E-mail / Usuário | Papel | Perfil |
+| --- | --- | --- |
+| `jefferson@exemplo.com` | Dono | Acesso total à administração, pagamentos e zona de perigo |
+| `lorrane@exemplo.com` | Admin | Gestão de membros, tipos, formas de pagamento e fechamento |
+| Filho(a) *(sem login)* | Dependente | Cadastro familiar sem usuário de acesso (fora do rateio) |
+
+---
+
+## Comandos de Qualidade e Manutenção
+
+| Comando | Descrição |
+| --- | --- |
+| `pnpm test` | Executa a suíte de testes automatizados com Vitest |
+| `pnpm test:watch` | Executa testes em modo assistido (watch) |
+| `pnpm lint` | Validação estática de código com ESLint |
+| `pnpm typecheck` | Checagem estrita de tipos com `tsc --noEmit` |
+| `pnpm build` | Cria o build de produção Next.js standalone |
+| `pnpm start` | Inicia o servidor com o build de produção |
+| `pnpm db:generate` | Gera arquivo SQL de migration em `drizzle/` a partir do schema |
+| `pnpm db:migrate` | Executa migrations pendentes no banco configurado |
+| `pnpm db:seed` | Executa o script de carga inicial de desenvolvimento |
+| `pnpm db:studio` | Interface visual do Drizzle para exploração do banco |
+| `pnpm tokens` | Atualiza variáveis CSS a partir de `docs/design/tokens.json` |
+
+---
+
+## Estrutura de Pastas Principal
 
 ```
-src/app/            rotas (App Router)       src/components/ui/  componentes do design system
-src/db/schema/      schema Drizzle           src/lib/calc/       regras de cálculo (puras, testadas)
-drizzle/            migrations versionadas   docs/               specs, interfaces, design, tasks
+contasdecasa/
+├── src/
+│   ├── app/                    # Rotas do Next.js (App Router)
+│   │   ├── (auth)/             # Rotas públicas: entrar (/entrar), cadastro (/cadastro)
+│   │   ├── (app)/              # Rotas autenticadas da casca principal
+│   │   │   ├── page.tsx        # Dashboard principal (KPIs, gráficos, saldo, pendências)
+│   │   │   ├── despesas/       # Listagem, filtros e lançamento (/despesas, /nova, /[id])
+│   │   │   ├── mes/            # Fechamento mensal, salários e divisão de contas (/mes)
+│   │   │   ├── tipos/          # Gestão de categorias e formas de pagamento (/tipos)
+│   │   │   ├── importar/       # Upload, revisão, confirmação e histórico de extratos
+│   │   │   ├── familia/        # Membros, dependentes e convites (/familia)
+│   │   │   ├── conta/          # Perfil, alteração de senha e tema (/conta)
+│   │   │   ├── error.tsx       # Tratamento visual amigável de erros da casca
+│   │   │   ├── not-found.tsx   # Página 404 personalizada do app
+│   │   │   └── loading.tsx     # Estado de carregamento integrado
+│   │   ├── convite/[token]/    # Aceite de convites com link
+│   │   ├── criar-familia/      # Onboarding de nova família
+│   │   └── api/                # Endpoints internos (auth e healthcheck em /api/health)
+│   ├── components/             # Componentes de interface (MobileHeader, Sidebar, UI)
+│   ├── db/                     # Conexão Drizzle, schema relacional, migrate e seed
+│   ├── lib/                    # Regras de negócio puras
+│   │   ├── calc/               # Funções de cálculo de divisão, saldo e rateio
+│   │   ├── import/             # Parsers de extrato (Inter, Bradesco, Nubank) e deduplicação
+│   │   ├── card-invoice.ts     # Regra de cálculo de competência e vencimento de fatura
+│   │   ├── dates.ts / period.ts# Manipulação de competências e timezone
+│   │   └── session.ts          # Controle de sessão e permissões por papel
+│   └── styles/                 # Folhas de estilo compartilhadas (tokens, layout, componentes)
+├── drizzle/                    # Migrations SQL versionadas do banco de dados
+├── docs/                       # Documentação técnica e operacional
+│   ├── README.md               # Índice detalhado da documentação
+│   ├── deploy.md               # Procedimento de deploy, backup e infraestrutura
+│   ├── specs/                  # Especificação funcional, regras de dados e decisões
+│   ├── interfaces/             # Contratos visuais e regras estritas de cada tela
+│   ├── design/                 # Tokens, componentes e protótipos de referência
+│   └── tasks/                  # Plano de execução detalhado e status das tarefas
+└── tests/                      # Fixtures e cenários de teste automatizados
 ```
+
+---
+
+## Documentação Detalhada & Deploy
+
+- **Índice da Documentação Técnica:** [`docs/README.md`](docs/README.md)
+- **Guia de Publicação e Infraestrutura:** [`docs/deploy.md`](docs/deploy.md)
+- **Contratos de Interface & Telas:** [`docs/interfaces/README.md`](docs/interfaces/README.md)
+- **Status do Plano de Trabalho:** [`docs/tasks/README.md`](docs/tasks/README.md)

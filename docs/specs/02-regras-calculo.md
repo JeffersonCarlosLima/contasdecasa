@@ -30,10 +30,29 @@ O valor informado é o de **cada parcela**. Parcela N de T gera as parcelas N+1�
 ## Fatura de cartão de crédito
 
 Função pura `cardInvoice({ purchaseDate, closingDay, dueDay })` em `src/lib/card-invoice.ts`:
-- Compra com dia ≤ dia de fechamento entra na fatura que fecha no mesmo mês; dia > fechamento entra na fatura do mês seguinte.
-- Vencimento: se `due_day > closing_day`, ocorre no mesmo mês do fechamento; caso contrário (`due_day <= closing_day`), no mês seguinte.
-- Dia inexistente (ex.: 31 em abril, ou 29/30/31 em fevereiro) é ajustado ao último dia do mês.
-- `reference_month` = dia 1 do mês do vencimento (`YYYY-MM-01`).
-- `due_date` = data calculada do vencimento (`YYYY-MM-DD`).
-- Aplicação: confirmação da importação (se a forma for cartão com fechamento/vencimento) e como sugestão no formulário de despesa. Cartão sem dias mantém comportamento padrão.
+- **Fechamento da fatura**:
+  - Compra com dia ≤ dia de fechamento (`purchaseDate.day <= closingDay`): entra na fatura que fecha no **mesmo mês** da compra.
+  - Compra com dia > dia de fechamento (`purchaseDate.day > closingDay`): entra na fatura que fecha no **mês seguinte** ao da compra.
+- **Vencimento da fatura**:
+  - Se `dueDay > closingDay`: o vencimento ocorre no **mesmo mês** do fechamento da fatura.
+  - Se `dueDay <= closingDay`: o vencimento ocorre no **mês seguinte** ao fechamento da fatura.
+- **Dias inexistentes**:
+  - Se o dia do vencimento não existir no mês correspondente (ex.: 31 em abril/junho/setembro/novembro, ou 29/30/31 em fevereiro), o dia é ajustado automaticamente para o **último dia do mês** (`Math.min(dueDay, daysInMonth)`).
+- **Mês de referência e data de vencimento**:
+  - `reference_month` = dia 1 do mês do **vencimento** (`YYYY-MM-01`).
+  - `due_date` = data calculada do vencimento (`YYYY-MM-DD`).
+- **Aplicação no sistema**:
+  - Na confirmação da importação de extrato (`confirmBatch`), se a forma de pagamento for cartão de crédito com `closing_day` e `due_day` configurados.
+  - Como sugestão dinâmica no formulário de criação/edição manual de despesas quando o usuário seleciona um cartão configurado.
+  - Cartões sem dias configurados ou outras formas (conta, pix, dinheiro) mantêm o vencimento igual à data da despesa e o `reference_month` no dia 1 do mês da compra/transação.
+
+## Mês de referência sempre no dia 1 (`reference_month`)
+
+- Todas as despesas (`expenses.reference_month`) e períodos mensais (`monthly_periods.month`) utilizam estritamente o formato `YYYY-MM-01` (primeiro dia do mês).
+- Normalização padronizada pela função `toMonthDate(month)` em `src/lib/period.ts`: qualquer entrada em formato `AAAA-MM` ou `AAAA-MM-DD` é convertida para `AAAA-MM-01`.
+- Validação no banco via check constraints:
+  - `expenses_reference_month_day1`: `extract(day from reference_month) = 1`
+  - `monthly_periods_month_day1`: `extract(day from month) = 1`
+- Em consultas e filtros da UI (`/despesas?mes=YYYY-MM`, `/mes`), as datas são agrupadas e comparadas pela chave `toMonthKey` (`YYYY-MM`), garantindo que nenhuma despesa importada ou lançada manualmente fique invisível no filtro mensal.
+
 
