@@ -6,7 +6,11 @@ import { useRouter } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
 import { formatBRL } from "@/lib/money";
 import { confirmBatch } from "@/app/(app)/importar/actions";
-import { computeReviewTotals } from "../../_components/helpers";
+import {
+  computeReviewTotals,
+  isRowSelectable,
+  sanitizeErrorMessage,
+} from "../../_components/helpers";
 import type { BatchReviewData } from "../../_components/types";
 
 export interface ConfirmBatchViewProps {
@@ -20,11 +24,13 @@ export function ConfirmBatchView({ data }: ConfirmBatchViewProps) {
   const [serverError, setServerError] = useState<string | null>(null);
   const [isConfirming, startTransition] = useTransition();
 
-  // Calcular totais reais baseados nas linhas que estão selecionadas
+  // Calcular totais reais baseados nas linhas que estão selecionadas (linhas ignoradas nunca são incluídas)
   const selectedIds = useMemo(() => {
     const s = new Set<string>();
     for (const r of rows) {
-      if (r.selected) s.add(r.id);
+      if (r.selected && isRowSelectable(r)) {
+        s.add(r.id);
+      }
     }
     return s;
   }, [rows]);
@@ -42,7 +48,7 @@ export function ConfirmBatchView({ data }: ConfirmBatchViewProps) {
       try {
         const res = await confirmBatch(batch.id);
         if (!res.ok) {
-          setServerError(res.error);
+          setServerError(sanitizeErrorMessage(res.error));
           return;
         }
 
@@ -55,9 +61,11 @@ export function ConfirmBatchView({ data }: ConfirmBatchViewProps) {
         }
       } catch (err) {
         setServerError(
-          err instanceof Error
-            ? err.message
-            : "Ocorreu um erro inesperado ao confirmar a importação."
+          sanitizeErrorMessage(
+            err instanceof Error
+              ? err.message
+              : "Ocorreu um erro inesperado ao confirmar a importação."
+          )
         );
       }
     });

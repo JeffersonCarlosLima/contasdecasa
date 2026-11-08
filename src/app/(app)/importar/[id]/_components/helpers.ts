@@ -40,6 +40,9 @@ export function computeReviewTotals(
   let selectedCount = 0;
 
   for (const row of rows) {
+    // Linhas ignoradas nunca contam na seleção nem são gravadas
+    if (row.type === "ignorar") continue;
+
     const isSelected = selectedIds.has(row.id);
     if (!isSelected) continue;
 
@@ -127,4 +130,66 @@ export function getDisabledProceedReason(totals: {
   }
 
   return "Selecione ao menos um lançamento para continuar.";
+}
+
+/**
+ * Define se uma linha deve iniciar selecionada na revisão.
+ * Padrão: Novas marcadas, Duplicadas desmarcadas, Ignoradas desmarcadas.
+ */
+export function isRowAutoSelected(row: {
+  situation: string;
+  type: string;
+  selected?: boolean;
+}): boolean {
+  if (row.type === "ignorar") return false;
+  if (row.situation === "duplicada") return false;
+  if (row.situation === "nova" || row.situation === "possivel_vinculo") {
+    return true;
+  }
+  return Boolean(row.selected);
+}
+
+/**
+ * Linhas com tipo 'ignorar' nunca são selecionáveis na revisão.
+ */
+export function isRowSelectable(row: { type: string }): boolean {
+  return row.type !== "ignorar";
+}
+
+/**
+ * Sanitiza mensagens de erro do servidor / banco de dados (ex: SQL bruto do Drizzle ou violação de unicidade)
+ * para exibir textos amigáveis em pt-BR.
+ */
+export function sanitizeErrorMessage(error: string | null | undefined): string {
+  if (!error) return "Ocorreu um erro inesperado ao processar a solicitação.";
+
+  const raw = String(error);
+  const rawLower = raw.toLowerCase();
+
+  const isSqlOrDbError =
+    rawLower.includes("failed query") ||
+    rawLower.includes("insert into") ||
+    rawLower.includes("update ") ||
+    rawLower.includes("delete from") ||
+    rawLower.includes("select ") ||
+    rawLower.includes("unique constraint") ||
+    rawLower.includes("violates unique constraint") ||
+    rawLower.includes("duplicate key") ||
+    rawLower.includes("expenses_family_fingerprint_uq") ||
+    rawLower.includes("drizzle") ||
+    rawLower.includes("postgres") ||
+    rawLower.includes("syntax error");
+
+  if (isSqlOrDbError) {
+    if (
+      rawLower.includes("duplicate key") ||
+      rawLower.includes("expenses_family_fingerprint_uq") ||
+      rawLower.includes("unique constraint")
+    ) {
+      return "Não foi possível confirmar o lote porque um ou mais lançamentos já foram importados anteriormente nesta família. Revise os lançamentos duplicados e tente novamente.";
+    }
+    return "Não foi possível confirmar o lote devido a um erro no banco de dados. Verifique os lançamentos e tente novamente.";
+  }
+
+  return raw;
 }

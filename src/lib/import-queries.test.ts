@@ -12,6 +12,7 @@ import { db } from "@/db";
 import {
   getBatchReview,
   getBatchSummary,
+  getConfirmedIncomeFingerprints,
   listBatches,
   listMappings,
   listRules,
@@ -236,6 +237,98 @@ describe("import-queries", () => {
       expect(data!.summary.missingOwnerCount).toBe(0);
       expect(data!.summary.readyToConfirm).toBe(true);
     });
+
+    it("não conta linha com tipo 'ignorar' em selected mesmo quando r.selected é true", async () => {
+      const mockBatchRow = {
+        batch: {
+          id: "b2",
+          layout: "csv_padrao" as const,
+          filename: "extrato.csv",
+          fileSize: 1024,
+          rowCount: 1,
+          status: "rascunho" as const,
+          confirmedAt: null,
+          undoneAt: null,
+          createdAt: new Date(),
+        },
+        paymentMethod: { id: "pm1", name: "Inter" },
+        owner: { id: "m1", displayName: "Jefferson", color: "person-a" },
+        importedBy: { id: "m1", displayName: "Jefferson" },
+      };
+
+      const mockDbRows = [
+        {
+          row: {
+            id: "r1",
+            batchId: "b2",
+            familyId: "fam_1",
+            lineNo: 1,
+            date: "2026-11-05",
+            descriptionOriginal: "Pagamento Fatura",
+            descriptionNormalized: "PAGAMENTO FATURA",
+            amountCents: -144020,
+            type: "ignorar" as const,
+            ignoreReason: "Pagamento fatura",
+            categoryId: null,
+            ownerMemberId: null,
+            paymentMethodId: "pm1",
+            selected: true,
+            fingerprint: "fp1",
+            situation: "duplicada" as const,
+            matchedExpenseId: null,
+            linkedExpenseId: null,
+            linkedRowId: null,
+            createdExpenseId: null,
+            targetMemberIncomeId: null,
+            appliedExtraCents: null,
+            previousSalaryCents: null,
+          },
+          category: { id: null, name: null, color: null },
+          owner: { id: null, displayName: null, color: null },
+          paymentMethod: { id: "pm1", name: "Inter" },
+          matchedExpense: { id: null, description: null, amountCents: null, dueDate: null },
+        },
+      ];
+
+      vi.mocked(db.select)
+        .mockReturnValueOnce({
+          from: vi.fn().mockReturnValue({
+            innerJoin: vi.fn().mockReturnValue({
+              innerJoin: vi.fn().mockReturnValue({
+                leftJoin: vi.fn().mockReturnValue({
+                  where: vi.fn().mockReturnValue({
+                    limit: vi.fn().mockResolvedValue([mockBatchRow]),
+                  }),
+                }),
+              }),
+            }),
+          }),
+        } as unknown as ReturnType<typeof db.select>)
+        .mockReturnValueOnce({
+          from: vi.fn().mockReturnValue({
+            leftJoin: vi.fn().mockReturnValue({
+              leftJoin: vi.fn().mockReturnValue({
+                leftJoin: vi.fn().mockReturnValue({
+                  leftJoin: vi.fn().mockReturnValue({
+                    where: vi.fn().mockReturnValue({
+                      orderBy: vi.fn().mockResolvedValue(mockDbRows),
+                    }),
+                  }),
+                }),
+              }),
+            }),
+          }),
+        } as unknown as ReturnType<typeof db.select>);
+
+      const data = await getBatchReview("fam_1", "b2");
+      expect(data).not.toBeNull();
+      // selected NÃO deve contar linha com tipo 'ignorar', mesmo com selected: true
+      expect(data!.summary.selected).toBe(0);
+      expect(data!.summary.expensesCents).toBe(0);
+      expect(data!.summary.incomesCents).toBe(0);
+      expect(data!.summary.ignoredCount).toBe(1);
+      expect(data!.summary.readyToConfirm).toBe(false);
+    });
   });
 
   describe("listRules", () => {
@@ -381,6 +474,7 @@ describe("import-queries", () => {
       expect(summary.linkedCount).toBe(1);
       expect(summary.incomesCount).toBe(2);
       expect(summary.incomeMonths).toEqual(["2026-11", "2026-10"]);
+      expect(summary.duplicatesCount).toBe(0);
     });
 
     it("retorna resumo vazio quando o lote não gerou despesas ou receitas", async () => {
@@ -404,6 +498,66 @@ describe("import-queries", () => {
       expect(summary.linkedCount).toBe(0);
       expect(summary.incomesCount).toBe(0);
       expect(summary.incomeMonths).toEqual([]);
+      expect(summary.duplicatesCount).toBe(0);
+    });
+
+    it("computa duplicatesCount no resumo a partir de importRows", async () => {
+      vi.mocked(db.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([]),
+        }),
+      } as unknown as ReturnType<typeof db.select>);
+
+      const mockRowsWithDup = [
+        {
+          id: "r1",
+          date: "2026-11-05",
+          type: "despesa" as const,
+          situation: "duplicada" as const,
+          selected: true,
+          linkedExpenseId: null,
+          createdExpenseId: null,
+          targetMemberIncomeId: null,
+        },
+      ];
+
+      vi.mocked(db.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            orderBy: vi.fn().mockResolvedValue(mockRowsWithDup),
+          }),
+        }),
+      } as unknown as ReturnType<typeof db.select>);
+
+      const summary = await getBatchSummary("fam_1", "b_dup");
+      expect(summary.duplicatesCount).toBe(1);
+    });
+  });
+
+  describe("getConfirmedIncomeFingerprints", () => {
+    it("retorna Set vazio imediatamente se candidateFingerprints for array vazio", async () => {
+      const result = await getConfirmedIncomeFingerprints("fam_1", []);
+      expect(result.size).toBe(0);
+      expect(db.select).not.toHaveBeenCalled();
+    });
+
+    it("retorna Set com fingerprints de lotes confirmados da família", async () => {
+      vi.mocked(db.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          innerJoin: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue([
+              { fingerprint: "fp-inc-1" },
+              { fingerprint: "fp-inc-2" },
+            ]),
+          }),
+        }),
+      } as unknown as ReturnType<typeof db.select>);
+
+      const result = await getConfirmedIncomeFingerprints("fam_1", ["fp-inc-1", "fp-inc-2", "fp-inc-3"]);
+      expect(result.size).toBe(2);
+      expect(result.has("fp-inc-1")).toBe(true);
+      expect(result.has("fp-inc-2")).toBe(true);
+      expect(result.has("fp-inc-3")).toBe(false);
     });
   });
 });

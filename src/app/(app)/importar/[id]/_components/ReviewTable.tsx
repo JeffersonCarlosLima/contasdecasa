@@ -2,7 +2,7 @@
 
 import { shortDate } from "@/lib/dates";
 import { formatBRL } from "@/lib/money";
-import { formatSignedAmount } from "./helpers";
+import { formatSignedAmount, isRowSelectable } from "./helpers";
 import { SituationBadge } from "./SituationBadge";
 import type { CategoryOption, ImportRowReviewItem, MemberOption } from "./types";
 
@@ -85,10 +85,11 @@ export function ReviewTable({
         </thead>
         <tbody>
           {rows.map((row) => {
-            const isSelected = selectedIds.has(row.id);
+            const isSelectable = isRowSelectable(row);
+            const isIgnored = !isSelectable;
+            const isSelected = selectedIds.has(row.id) && isSelectable;
             const isExpense = row.type === "despesa";
             const isIncome = row.type === "receita" || row.type === "salario";
-            const isIgnored = row.type === "ignorar";
             const isMissingCategory = isExpense && !row.categoryId && isSelected;
             const isMissingOwner = isIncome && !row.ownerMemberId && isSelected;
 
@@ -116,14 +117,17 @@ export function ReviewTable({
                       display: "inline-flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      cursor: "pointer",
+                      cursor: !isSelectable ? "not-allowed" : "pointer",
                     }}
                   >
                     <input
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => onToggleSelectRow(row.id)}
-                      disabled={isPending}
+                      disabled={isPending || !isSelectable}
+                      aria-describedby={
+                        !isSelectable ? `table-ignore-reason-${row.id}` : undefined
+                      }
                       aria-label={`Selecionar lançamento ${row.descriptionOriginal}`}
                     />
                   </label>
@@ -135,6 +139,15 @@ export function ReviewTable({
                 {/* 3. Descrição (estritamente como texto) */}
                 <td>
                   <span style={{ fontWeight: 600 }}>{row.descriptionOriginal}</span>
+                  {!isSelectable && (
+                    <div
+                      id={`table-ignore-reason-${row.id}`}
+                      className="caption cc-muted"
+                      style={{ marginTop: 2 }}
+                    >
+                      Ignorada: não será gravada
+                    </div>
+                  )}
                   {row.ignoreReason && (
                     <div className="caption cc-muted" style={{ marginTop: 2 }}>
                       Motivo: {row.ignoreReason}

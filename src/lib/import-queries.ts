@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/db";
 import { currentMonth } from "@/lib/dates";
@@ -311,7 +311,8 @@ export async function getBatchReview(
     if (r.situation === "duplicada") duplicatesCount++;
     if (r.type === "ignorar" || !r.selected) ignoredCount++;
 
-    if (r.selected) {
+    // Linha com tipo 'ignorar' NUNCA vira despesa nem receita, mesmo se marcada
+    if (r.selected && r.type !== "ignorar") {
       selectedCount++;
       const abs = Math.abs(r.amountCents);
       if (r.type === "despesa") {
@@ -423,6 +424,46 @@ export interface BatchSummary {
   linkedCount: number;
   incomesCount: number;
   incomeMonths: string[];
+  duplicatesCount?: number;
+}
+
+/**
+ * Retorna os fingerprints de linhas de receita e salário pertencentes
+ * a lotes CONFIRMADOS (não desfeitos) da mesma família.
+ * Usado para deduplicação de receitas na análise (upload) e na confirmação.
+ */
+export async function getConfirmedIncomeFingerprints(
+  familyId: string,
+  candidateFingerprints?: string[],
+  executor: typeof db = db,
+): Promise<Set<string>> {
+  if (candidateFingerprints && candidateFingerprints.length === 0) {
+    return new Set();
+  }
+
+  const conditions = [
+    eq(importRows.familyId, familyId),
+    eq(importBatches.familyId, familyId),
+    eq(importBatches.status, "confirmado"),
+    inArray(importRows.type, ["receita", "salario"]),
+    isNotNull(importRows.fingerprint),
+  ];
+
+  if (candidateFingerprints && candidateFingerprints.length > 0) {
+    conditions.push(inArray(importRows.fingerprint, candidateFingerprints));
+  }
+
+  const rows = await executor
+    .select({ fingerprint: importRows.fingerprint })
+    .from(importRows)
+    .innerJoin(importBatches, eq(importBatches.id, importRows.batchId))
+    .where(and(...conditions));
+
+  return new Set(
+    rows
+      .map((r) => r.fingerprint)
+      .filter((fp): fp is string => typeof fp === "string" && fp.length > 0),
+  );
 }
 
 /**
@@ -459,6 +500,7 @@ export async function getBatchSummary(
       id: importRows.id,
       date: importRows.date,
       type: importRows.type,
+      situation: importRows.situation,
       selected: importRows.selected,
       linkedExpenseId: importRows.linkedExpenseId,
       createdExpenseId: importRows.createdExpenseId,
@@ -475,14 +517,19 @@ export async function getBatchSummary(
 
   let linkedCount = 0;
   let incomesCount = 0;
+  let duplicatesCount = 0;
   const incomeMonthsSet = new Set<string>();
 
   for (const r of rows) {
-    if (r.linkedExpenseId && (r.createdExpenseId || r.selected)) {
+    if (r.situation === "duplicada") {
+      duplicatesCount += 1;
+    }
+    if (r.type === "despesa" && r.linkedExpenseId && (r.createdExpenseId || r.selected)) {
       linkedCount += 1;
     }
     if (
       (r.type === "receita" || r.type === "salario") &&
+      r.situation !== "duplicada" &&
       (r.targetMemberIncomeId || r.selected)
     ) {
       incomesCount += 1;
@@ -498,6 +545,7 @@ export async function getBatchSummary(
     linkedCount,
     incomesCount,
     incomeMonths,
+    duplicatesCount,
   };
 }
 

@@ -15,6 +15,9 @@ import {
   computeReviewTotals,
   filterReviewRows,
   getDisabledProceedReason,
+  isRowAutoSelected,
+  isRowSelectable,
+  sanitizeErrorMessage,
 } from "./helpers";
 import { ReviewMobileCards } from "./ReviewMobileCards";
 import { ReviewTable } from "./ReviewTable";
@@ -39,17 +42,23 @@ export function BatchReviewView({
   members,
 }: BatchReviewViewProps) {
   const { batch } = data;
-  const [rows, setRows] = useState<ImportRowReviewItem[]>(data.rows);
 
-  // Duplicadas vêm desmarcadas por padrão
+  // Padrão do sistema: Novas marcadas, Duplicadas e Ignoradas desmarcadas
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => {
     const initial = new Set<string>();
     for (const r of data.rows) {
-      if (r.selected && r.situation !== "duplicada") {
+      if (isRowAutoSelected(r)) {
         initial.add(r.id);
       }
     }
     return initial;
+  });
+
+  const [rows, setRows] = useState<ImportRowReviewItem[]>(() => {
+    return data.rows.map((r) => ({
+      ...r,
+      selected: isRowAutoSelected(r),
+    }));
   });
 
   const [filter, setFilter] = useState<FilterStatus>("todas");
@@ -63,12 +72,18 @@ export function BatchReviewView({
     return filterReviewRows(rows, filter);
   }, [rows, filter]);
 
+  // Linhas selecionáveis entre as visíveis (ignora linhas com tipo 'ignorar' e duplicadas no 'selecionar todas')
+  const selectableVisibleRows = useMemo(() => {
+    return visibleRows.filter((r) => isRowSelectable(r) && r.situation !== "duplicada");
+  }, [visibleRows]);
+
   const visibleSelectedCount = useMemo(() => {
-    return visibleRows.filter((r) => selectedIds.has(r.id)).length;
-  }, [visibleRows, selectedIds]);
+    return selectableVisibleRows.filter((r) => selectedIds.has(r.id)).length;
+  }, [selectableVisibleRows, selectedIds]);
 
   const allVisibleSelected =
-    visibleRows.length > 0 && visibleSelectedCount === visibleRows.length;
+    selectableVisibleRows.length > 0 &&
+    visibleSelectedCount === selectableVisibleRows.length;
 
   // Totais e validação
   const totals = useMemo(() => {
@@ -99,6 +114,9 @@ export function BatchReviewView({
    * ========================================================================== */
 
   function handleToggleSelectRow(id: string) {
+    const row = rows.find((r) => r.id === id);
+    if (!row || !isRowSelectable(row)) return;
+
     const next = new Set(selectedIds);
     const willSelect = !next.has(id);
     if (willSelect) {
@@ -119,9 +137,13 @@ export function BatchReviewView({
           rowIds: [id],
           patch: { selected: willSelect },
         });
-        if (!res.ok) setServerError(res.error);
+        if (!res.ok) setServerError(sanitizeErrorMessage(res.error));
       } catch (err) {
-        setServerError(err instanceof Error ? err.message : "Erro ao atualizar seleção.");
+        setServerError(
+          sanitizeErrorMessage(
+            err instanceof Error ? err.message : "Erro ao atualizar seleção."
+          )
+        );
       }
     });
   }
@@ -132,7 +154,7 @@ export function BatchReviewView({
 
     const rowIdsToUpdate: string[] = [];
 
-    for (const r of visibleRows) {
+    for (const r of selectableVisibleRows) {
       if (shouldSelectAll) {
         next.add(r.id);
       } else {
@@ -148,6 +170,8 @@ export function BatchReviewView({
       )
     );
 
+    if (rowIdsToUpdate.length === 0) return;
+
     startTransition(async () => {
       try {
         const res = await updateRows({
@@ -155,9 +179,13 @@ export function BatchReviewView({
           rowIds: rowIdsToUpdate,
           patch: { selected: shouldSelectAll },
         });
-        if (!res.ok) setServerError(res.error);
+        if (!res.ok) setServerError(sanitizeErrorMessage(res.error));
       } catch (err) {
-        setServerError(err instanceof Error ? err.message : "Erro ao atualizar seleção em lote.");
+        setServerError(
+          sanitizeErrorMessage(
+            err instanceof Error ? err.message : "Erro ao atualizar seleção em lote."
+          )
+        );
       }
     });
   }
@@ -170,13 +198,18 @@ export function BatchReviewView({
 
     startTransition(async () => {
       try {
-        await updateRows({
+        const res = await updateRows({
           batchId: batch.id,
           rowIds: allIds,
           patch: { selected: false },
         });
+        if (!res.ok) setServerError(sanitizeErrorMessage(res.error));
       } catch (err) {
-        setServerError(err instanceof Error ? err.message : "Erro ao limpar seleção.");
+        setServerError(
+          sanitizeErrorMessage(
+            err instanceof Error ? err.message : "Erro ao limpar seleção."
+          )
+        );
       }
     });
   }
@@ -185,8 +218,24 @@ export function BatchReviewView({
     rowId: string,
     type: "despesa" | "receita" | "salario" | "ignorar"
   ) {
+    const targetRow = rows.find((r) => r.id === rowId);
+    const wasIgnored = targetRow?.type === "ignorar";
+    const willBeIgnored = type === "ignorar";
+
+    const next = new Set(selectedIds);
+    let newSelected = targetRow?.selected ?? false;
+
+    if (willBeIgnored) {
+      next.delete(rowId);
+      newSelected = false;
+    } else if (wasIgnored && targetRow?.situation === "nova") {
+      next.add(rowId);
+      newSelected = true;
+    }
+
+    setSelectedIds(next);
     setRows((prev) =>
-      prev.map((r) => (r.id === rowId ? { ...r, type } : r))
+      prev.map((r) => (r.id === rowId ? { ...r, type, selected: newSelected } : r))
     );
 
     startTransition(async () => {
@@ -194,11 +243,15 @@ export function BatchReviewView({
         const res = await updateRows({
           batchId: batch.id,
           rowIds: [rowId],
-          patch: { type },
+          patch: { type, selected: newSelected },
         });
-        if (!res.ok) setServerError(res.error);
+        if (!res.ok) setServerError(sanitizeErrorMessage(res.error));
       } catch (err) {
-        setServerError(err instanceof Error ? err.message : "Erro ao alterar tipo.");
+        setServerError(
+          sanitizeErrorMessage(
+            err instanceof Error ? err.message : "Erro ao alterar tipo."
+          )
+        );
       }
     });
   }
@@ -225,9 +278,13 @@ export function BatchReviewView({
           rowIds: [rowId],
           patch: { categoryId },
         });
-        if (!res.ok) setServerError(res.error);
+        if (!res.ok) setServerError(sanitizeErrorMessage(res.error));
       } catch (err) {
-        setServerError(err instanceof Error ? err.message : "Erro ao alterar categoria.");
+        setServerError(
+          sanitizeErrorMessage(
+            err instanceof Error ? err.message : "Erro ao alterar categoria."
+          )
+        );
       }
     });
   }
@@ -256,9 +313,13 @@ export function BatchReviewView({
           rowIds: [rowId],
           patch: { ownerId },
         });
-        if (!res.ok) setServerError(res.error);
+        if (!res.ok) setServerError(sanitizeErrorMessage(res.error));
       } catch (err) {
-        setServerError(err instanceof Error ? err.message : "Erro ao alterar responsável.");
+        setServerError(
+          sanitizeErrorMessage(
+            err instanceof Error ? err.message : "Erro ao alterar responsável."
+          )
+        );
       }
     });
   }
@@ -267,8 +328,22 @@ export function BatchReviewView({
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
 
+    const next = new Set(selectedIds);
+    const willBeIgnored = type === "ignorar";
+
+    if (willBeIgnored) {
+      for (const id of ids) {
+        next.delete(id);
+      }
+    }
+
+    setSelectedIds(next);
     setRows((prev) =>
-      prev.map((r) => (selectedIds.has(r.id) ? { ...r, type } : r))
+      prev.map((r) =>
+        selectedIds.has(r.id)
+          ? { ...r, type, selected: willBeIgnored ? false : r.selected }
+          : r
+      )
     );
 
     startTransition(async () => {
@@ -276,11 +351,15 @@ export function BatchReviewView({
         const res = await updateRows({
           batchId: batch.id,
           rowIds: ids,
-          patch: { type },
+          patch: willBeIgnored ? { type, selected: false } : { type },
         });
-        if (!res.ok) setServerError(res.error);
+        if (!res.ok) setServerError(sanitizeErrorMessage(res.error));
       } catch (err) {
-        setServerError(err instanceof Error ? err.message : "Erro ao aplicar tipo em lote.");
+        setServerError(
+          sanitizeErrorMessage(
+            err instanceof Error ? err.message : "Erro ao aplicar tipo em lote."
+          )
+        );
       }
     });
   }
@@ -310,9 +389,13 @@ export function BatchReviewView({
           rowIds: ids,
           patch: { categoryId },
         });
-        if (!res.ok) setServerError(res.error);
+        if (!res.ok) setServerError(sanitizeErrorMessage(res.error));
       } catch (err) {
-        setServerError(err instanceof Error ? err.message : "Erro ao aplicar categoria em lote.");
+        setServerError(
+          sanitizeErrorMessage(
+            err instanceof Error ? err.message : "Erro ao aplicar categoria em lote."
+          )
+        );
       }
     });
   }
@@ -344,9 +427,13 @@ export function BatchReviewView({
           rowIds: ids,
           patch: { ownerId },
         });
-        if (!res.ok) setServerError(res.error);
+        if (!res.ok) setServerError(sanitizeErrorMessage(res.error));
       } catch (err) {
-        setServerError(err instanceof Error ? err.message : "Erro ao aplicar responsável em lote.");
+        setServerError(
+          sanitizeErrorMessage(
+            err instanceof Error ? err.message : "Erro ao aplicar responsável em lote."
+          )
+        );
       }
     });
   }
@@ -365,9 +452,13 @@ export function BatchReviewView({
           rowId,
           expenseId,
         });
-        if (!res.ok) setServerError(res.error);
+        if (!res.ok) setServerError(sanitizeErrorMessage(res.error));
       } catch (err) {
-        setServerError(err instanceof Error ? err.message : "Erro ao vincular despesa.");
+        setServerError(
+          sanitizeErrorMessage(
+            err instanceof Error ? err.message : "Erro ao vincular despesa."
+          )
+        );
       }
     });
   }
@@ -380,9 +471,13 @@ export function BatchReviewView({
     startTransition(async () => {
       try {
         const res = await clearTransferSuggestion(batch.id, rowId);
-        if (!res.ok) setServerError(res.error);
+        if (!res.ok) setServerError(sanitizeErrorMessage(res.error));
       } catch (err) {
-        setServerError(err instanceof Error ? err.message : "Erro ao desfazer transferência.");
+        setServerError(
+          sanitizeErrorMessage(
+            err instanceof Error ? err.message : "Erro ao desfazer transferência."
+          )
+        );
       }
     });
   }
@@ -633,8 +728,8 @@ export function BatchReviewView({
 
       {/* Barra de Ações em Lote */}
       <BulkActionsBar
-        selectedCount={selectedIds.size}
-        totalVisible={visibleRows.length}
+        selectedCount={totals.selectedCount}
+        totalVisible={selectableVisibleRows.length}
         allVisibleSelected={allVisibleSelected}
         onToggleSelectAllVisible={handleToggleSelectAllVisible}
         onClearSelection={handleClearSelection}

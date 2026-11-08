@@ -19,6 +19,7 @@ import {
   applyRules,
   findOwnTransfers,
   fingerprint,
+  isDuplicateIncome,
   matchStatus,
   normalizeDescription,
   parseCsv,
@@ -26,9 +27,26 @@ import {
   type SameDayExpenseCandidate,
   type TransferRowCandidate,
 } from "@/lib/import";
-import { computeTargetMonth, getBatchSummary } from "@/lib/import-queries";
-import { assertMonthOpen, toMonthDate, toMonthKey } from "@/lib/period";
+import {
+  computeTargetMonth,
+  getBatchSummary,
+  getConfirmedIncomeFingerprints,
+} from "@/lib/import-queries";
+import { assertMonthOpen, MonthClosedError, toMonthDate, toMonthKey } from "@/lib/period";
 import { requireMember, requireRole } from "@/lib/session";
+
+function getErrorMessage(err: unknown, fallback: string): string {
+  if (
+    err instanceof MonthClosedError ||
+    (err instanceof Error &&
+      (err.message.includes("fechado") ||
+        err.message.startsWith("Acesso negado") ||
+        err.message.includes("insuficiente")))
+  ) {
+    return err.message;
+  }
+  return fallback;
+}
 import {
   batchIdSchema,
   createRuleFromRowSchema,
@@ -262,6 +280,29 @@ export async function uploadStatement(formData: FormData): Promise<UploadStateme
       existingExpenseFps.map((e) => e.fingerprint!).filter(Boolean),
     );
 
+    // Identifica linhas candidatas a receita/salário para buscar duplicidades em lotes confirmados
+    const candidateIncomeFps = parseResult.rows
+      .filter((row) => {
+        const typeSugg = suggestType(row);
+        return typeSugg.type === "receita" || typeSugg.type === "salario" || row.amountCents > 0;
+      })
+      .map((row) => {
+        const descNorm = row.descriptionNormalized || normalizeDescription(row.descriptionOriginal);
+        return fingerprint({
+          familyId: sessionMember.familyId,
+          paymentMethodId,
+          date: row.date,
+          amountCents: row.amountCents,
+          descriptionNormalized: descNorm,
+          externalId: row.externalId,
+        });
+      });
+
+    const confirmedIncomeFingerprints = await getConfirmedIncomeFingerprints(
+      sessionMember.familyId,
+      candidateIncomeFps,
+    );
+
     // Despesas pendentes para sugestão de vínculo
     const pendingExpenses = await db
       .select({
@@ -392,6 +433,8 @@ export async function uploadStatement(formData: FormData): Promise<UploadStateme
       tempId: string;
     }
 
+    const seenIncomeFpsInBatch = new Set<string>();
+
     const preRows: PreRow[] = parseResult.rows.map((row) => {
       const descNorm = row.descriptionNormalized || normalizeDescription(row.descriptionOriginal);
 
@@ -413,6 +456,14 @@ export async function uploadStatement(formData: FormData): Promise<UploadStateme
       const finalOwner = ruleApplied?.ownerId !== undefined ? ruleApplied.ownerId : ownerMemberId;
       const finalPm = ruleApplied?.paymentMethodId ?? paymentMethodId;
 
+      const isIncome = type === "receita" || type === "salario";
+      const isDuplicateIncomeRow = isDuplicateIncome({
+        fingerprint: fp,
+        type,
+        confirmedIncomeFingerprints,
+        seenIncomeFingerprints: seenIncomeFpsInBatch,
+      });
+
       const rowInvoice = isCardWithInvoice
         ? cardInvoice({
             purchaseDate: row.date,
@@ -428,13 +479,19 @@ export async function uploadStatement(formData: FormData): Promise<UploadStateme
           }
         : row;
 
-      const matched = matchStatus(rowForMatch, {
-        existingFingerprints,
-        pendingExpenses,
-        sameDayExpenses: sameDayCandidates,
-        paymentMethodId: finalPm,
-        rowFingerprint: fp,
-      });
+      const matched = isDuplicateIncomeRow
+        ? { situation: "duplicada" as const }
+        : matchStatus(rowForMatch, {
+            existingFingerprints,
+            pendingExpenses,
+            sameDayExpenses: sameDayCandidates,
+            paymentMethodId: finalPm,
+            rowFingerprint: fp,
+          });
+
+      if (isIncome && !isDuplicateIncomeRow) {
+        seenIncomeFpsInBatch.add(fp);
+      }
 
       const isDuplicated = matched.situation === "duplicada";
       const isIgnored = type === "ignorar";
@@ -558,9 +615,14 @@ export async function uploadStatement(formData: FormData): Promise<UploadStateme
 
     return { ok: true, batchId };
   } catch (err: unknown) {
+    console.error(
+      "[uploadStatement] Erro ao importar extrato:",
+      err,
+      (err as { cause?: unknown })?.cause,
+    );
     return {
       ok: false,
-      error: err instanceof Error ? err.message : "Erro inesperado ao importar extrato.",
+      error: "Não foi possível processar o extrato. Tente novamente.",
     };
   }
 }
@@ -594,9 +656,14 @@ export async function saveMapping(
 
     return { ok: true, mappingId: mapping.id };
   } catch (err: unknown) {
+    console.error(
+      "[saveMapping] Erro ao salvar mapeamento:",
+      err,
+      (err as { cause?: unknown })?.cause,
+    );
     return {
       ok: false,
-      error: err instanceof Error ? err.message : "Erro ao salvar mapeamento.",
+      error: "Não foi possível salvar o mapeamento. Tente novamente.",
     };
   }
 }
@@ -656,9 +723,14 @@ export async function updateRows(
 
     return { ok: true };
   } catch (err: unknown) {
+    console.error(
+      "[updateRows] Erro ao atualizar linhas:",
+      err,
+      (err as { cause?: unknown })?.cause,
+    );
     return {
       ok: false,
-      error: err instanceof Error ? err.message : "Erro ao atualizar linhas.",
+      error: "Não foi possível atualizar as linhas. Tente novamente.",
     };
   }
 }
@@ -710,9 +782,14 @@ export async function setRowLink(
 
     return { ok: true };
   } catch (err: unknown) {
+    console.error(
+      "[setRowLink] Erro ao vincular despesa:",
+      err,
+      (err as { cause?: unknown })?.cause,
+    );
     return {
       ok: false,
-      error: err instanceof Error ? err.message : "Erro ao vincular despesa.",
+      error: "Não foi possível vincular a despesa. Tente novamente.",
     };
   }
 }
@@ -799,9 +876,14 @@ export async function clearTransferSuggestion(
 
     return { ok: true };
   } catch (err: unknown) {
+    console.error(
+      "[clearTransferSuggestion] Erro ao desfazer transferência:",
+      err,
+      (err as { cause?: unknown })?.cause,
+    );
     return {
       ok: false,
-      error: err instanceof Error ? err.message : "Erro ao desfazer transferência.",
+      error: "Não foi possível desfazer a transferência. Tente novamente.",
     };
   }
 }
@@ -839,9 +921,17 @@ export async function createRuleFromRow(
 
     return { ok: true, ruleId: rule.id };
   } catch (err: unknown) {
+    console.error(
+      "[createRuleFromRow] Erro ao criar regra de classificação:",
+      err,
+      (err as { cause?: unknown })?.cause,
+    );
     return {
       ok: false,
-      error: err instanceof Error ? err.message : "Erro ao criar regra de classificação.",
+      error: getErrorMessage(
+        err,
+        "Não foi possível criar a regra de classificação. Tente novamente.",
+      ),
     };
   }
 }
@@ -906,9 +996,17 @@ export async function saveRule(
     }
     return { ok: true, ruleId: created.id };
   } catch (err: unknown) {
+    console.error(
+      "[saveRule] Erro ao salvar regra:",
+      err,
+      (err as { cause?: unknown })?.cause,
+    );
     return {
       ok: false,
-      error: err instanceof Error ? err.message : "Erro ao salvar regra.",
+      error: getErrorMessage(
+        err,
+        "Não foi possível salvar a regra. Tente novamente.",
+      ),
     };
   }
 }
@@ -936,9 +1034,17 @@ export async function deleteRule(
 
     return { ok: true };
   } catch (err: unknown) {
+    console.error(
+      "[deleteRule] Erro ao excluir regra:",
+      err,
+      (err as { cause?: unknown })?.cause,
+    );
     return {
       ok: false,
-      error: err instanceof Error ? err.message : "Erro ao excluir regra.",
+      error: getErrorMessage(
+        err,
+        "Não foi possível excluir a regra. Tente novamente.",
+      ),
     };
   }
 }
@@ -993,7 +1099,10 @@ export async function confirmBatch(
       )
       .orderBy(importRows.lineNo);
 
-    if (selectedRows.length === 0) {
+    // Linha com tipo 'ignorar' NUNCA vira despesa nem receita na confirmação, mesmo marcada
+    const activeRows = selectedRows.filter((r) => r.type !== "ignorar");
+
+    if (activeRows.length === 0) {
       return { ok: false, error: "Nenhum lançamento selecionado para confirmação." };
     }
 
@@ -1030,7 +1139,7 @@ export async function confirmBatch(
       typeof batchPaymentMethod.dueDay === "number";
 
     // Validação de categorias e membros
-    for (const r of selectedRows) {
+    for (const r of activeRows) {
       if (r.type === "despesa" && !r.categoryId) {
         return {
           ok: false,
@@ -1049,7 +1158,7 @@ export async function confirmBatch(
     // Validação de meses fechados
     const uniqueMonths = Array.from(
       new Set(
-        selectedRows.map((r) => {
+        activeRows.map((r) => {
           if (r.type === "despesa" && !r.linkedExpenseId && isCardWithInvoice) {
             const invoice = cardInvoice({
               purchaseDate: r.date,
@@ -1069,7 +1178,62 @@ export async function confirmBatch(
 
     // Transação de confirmação
     await db.transaction(async (tx) => {
-      for (const r of selectedRows) {
+      // Pré-carrega fingerprints das despesas ativas para não estourar o índice único
+      const candidateFingerprints = activeRows
+        .filter((r) => r.type === "despesa" && !r.linkedExpenseId && Boolean(r.fingerprint))
+        .map((r) => r.fingerprint as string);
+
+      const existingActiveExpenses =
+        candidateFingerprints.length > 0
+          ? await tx
+              .select({ id: expenses.id, fingerprint: expenses.fingerprint })
+              .from(expenses)
+              .where(
+                and(
+                  eq(expenses.familyId, sessionMember.familyId),
+                  inArray(expenses.fingerprint, candidateFingerprints),
+                  isNull(expenses.deletedAt),
+                ),
+              )
+          : [];
+
+      const existingFpMap = new Map(
+        existingActiveExpenses
+          .filter((e): e is { id: string; fingerprint: string } => typeof e.fingerprint === "string")
+          .map((e) => [e.fingerprint, e.id]),
+      );
+      const insertedFps = new Set<string>();
+
+      // Pré-carrega fingerprints de receitas/salários confirmados para não duplicar renda
+      const candidateIncomeFingerprints = activeRows
+        .filter((r) => (r.type === "receita" || r.type === "salario") && Boolean(r.fingerprint))
+        .map((r) => r.fingerprint as string);
+
+      const existingConfirmedIncomes =
+        candidateIncomeFingerprints.length > 0
+          ? await tx
+              .select({ fingerprint: importRows.fingerprint })
+              .from(importRows)
+              .innerJoin(importBatches, eq(importBatches.id, importRows.batchId))
+              .where(
+                and(
+                  eq(importRows.familyId, sessionMember.familyId),
+                  eq(importBatches.familyId, sessionMember.familyId),
+                  eq(importBatches.status, "confirmado"),
+                  inArray(importRows.type, ["receita", "salario"]),
+                  inArray(importRows.fingerprint, candidateIncomeFingerprints),
+                ),
+              )
+          : [];
+
+      const confirmedIncomeFpSet = new Set(
+        existingConfirmedIncomes
+          .map((row) => row.fingerprint)
+          .filter((fp): fp is string => typeof fp === "string" && fp.length > 0),
+      );
+      const processedIncomeFps = new Set<string>();
+
+      for (const r of activeRows) {
         const rowMonthDate = toMonthDate(r.date);
         const absAmount = Math.abs(r.amountCents);
 
@@ -1094,9 +1258,24 @@ export async function confirmBatch(
 
             await tx
               .update(importRows)
-              .set({ createdExpenseId: r.linkedExpenseId })
+              .set({ createdExpenseId: r.linkedExpenseId, updatedAt: new Date() })
               .where(eq(importRows.id, r.id));
           } else {
+            // Se o fingerprint já existe em despesa ativa da família:
+            // pule (sem inserir), conte como duplicada no resumo, e não deixe a transação inteira falhar.
+            if (r.fingerprint && (existingFpMap.has(r.fingerprint) || insertedFps.has(r.fingerprint))) {
+              const existingExpId = existingFpMap.get(r.fingerprint);
+              await tx
+                .update(importRows)
+                .set({
+                  situation: "duplicada",
+                  matchedExpenseId: existingExpId ?? r.matchedExpenseId,
+                  updatedAt: new Date(),
+                })
+                .where(eq(importRows.id, r.id));
+              continue;
+            }
+
             // Cria nova despesa (com regra de fatura se for cartão com fechamento e vencimento)
             let expenseReferenceMonth = rowMonthDate;
             let expenseDueDate = r.date;
@@ -1132,13 +1311,34 @@ export async function confirmBatch(
               .returning({ id: expenses.id });
 
             if (newExp) {
+              if (r.fingerprint) {
+                insertedFps.add(r.fingerprint);
+                existingFpMap.set(r.fingerprint, newExp.id);
+              }
               await tx
                 .update(importRows)
-                .set({ createdExpenseId: newExp.id })
+                .set({ createdExpenseId: newExp.id, updatedAt: new Date() })
                 .where(eq(importRows.id, r.id));
             }
           }
         } else if (r.type === "receita" || r.type === "salario") {
+          // Se o fingerprint já existe em lote confirmado da mesma família ou já foi processado neste lote:
+          // pule (sem somar na renda), marque como duplicada, assim como já faz com despesas.
+          if (
+            r.fingerprint &&
+            (confirmedIncomeFpSet.has(r.fingerprint) || processedIncomeFps.has(r.fingerprint))
+          ) {
+            await tx
+              .update(importRows)
+              .set({
+                situation: "duplicada",
+                selected: false,
+                updatedAt: new Date(),
+              })
+              .where(eq(importRows.id, r.id));
+            continue;
+          }
+
           // Garante período do mês
           let [period] = await tx
             .select({ id: monthlyPeriods.id })
@@ -1210,6 +1410,7 @@ export async function confirmBatch(
               .set({
                 appliedExtraCents: absAmount,
                 targetMemberIncomeId: income.id,
+                updatedAt: new Date(),
               })
               .where(eq(importRows.id, r.id));
           } else if (r.type === "salario") {
@@ -1227,8 +1428,13 @@ export async function confirmBatch(
               .set({
                 previousSalaryCents: prevSalary,
                 targetMemberIncomeId: income.id,
+                updatedAt: new Date(),
               })
               .where(eq(importRows.id, r.id));
+          }
+
+          if (r.fingerprint) {
+            processedIncomeFps.add(r.fingerprint);
           }
         }
       }
@@ -1250,9 +1456,17 @@ export async function confirmBatch(
 
     return { ok: true, batchId: batch.id, targetMonth };
   } catch (err: unknown) {
+    console.error(
+      "[confirmBatch] Erro ao confirmar lote de importação:",
+      err,
+      (err as { cause?: unknown })?.cause,
+    );
     return {
       ok: false,
-      error: err instanceof Error ? err.message : "Erro ao confirmar lote de importação.",
+      error: getErrorMessage(
+        err,
+        "Não foi possível confirmar a importação. Nada foi gravado. Tente de novo.",
+      ),
     };
   }
 }
@@ -1445,9 +1659,17 @@ export async function undoBatch(
 
     return { ok: true };
   } catch (err: unknown) {
+    console.error(
+      "[undoBatch] Erro ao desfazer lote de importação:",
+      err,
+      (err as { cause?: unknown })?.cause,
+    );
     return {
       ok: false,
-      error: err instanceof Error ? err.message : "Erro ao desfazer lote de importação.",
+      error: getErrorMessage(
+        err,
+        "Não foi possível desfazer a importação. Nada foi alterado. Tente de novo.",
+      ),
     };
   }
 }

@@ -67,7 +67,8 @@ vi.mock("@/db", () => ({
 
 import { assertMonthOpen } from "@/lib/period";
 import { requireMember, requireRole } from "@/lib/session";
-import { expenses, monthlyPeriods } from "@/db/schema";
+import { expenses, importRows, memberIncomes, monthlyPeriods } from "@/db/schema";
+import { fingerprint } from "@/lib/import";
 import { computeTargetMonth } from "@/lib/import-queries";
 import {
   clearTransferSuggestion,
@@ -604,6 +605,131 @@ describe("importar actions", () => {
       expect(insertedRowsPayload?.[0]?.situation).toBe("possivel_vinculo");
       expect(insertedRowsPayload?.[0]?.matchedExpenseId).toBe(manualExpenseId);
     });
+
+    it("reimportação de receita vira duplicada (desmarcada) na análise quando já existe em lote confirmado da família", async () => {
+      // Extrato com receita (Pix recebido positivo)
+      const csv = "Data,Valor,Identificador,Descrição\n05/11/2026,1440.20,id-pix,Pix recebido";
+      const fd = new FormData();
+      const file = new File([csv], "extrato.csv", { type: "text/csv" });
+      fd.append("file", file);
+      fd.append("paymentMethodId", pmId);
+      fd.append("ownerMemberId", memberId);
+
+      // 1. paymentMethod existe (conta)
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([{ id: pmId, type: "conta", archived: false }]),
+      );
+      // 2. regras existentes
+      mockDb.select.mockReturnValueOnce(createDbChain([]));
+      // 3. membros da família
+      mockDb.select.mockReturnValueOnce(createDbChain([{ id: memberId, displayName: "Jefferson" }]));
+      // 4. despesas existentes para fingerprint
+      mockDb.select.mockReturnValueOnce(createDbChain([]));
+      // 5. getConfirmedIncomeFingerprints: simula que o fingerprint da receita já existe em lote CONFIRMADO
+      const expectedFp = fingerprint({
+        familyId: famId,
+        paymentMethodId: pmId,
+        date: "2026-11-05",
+        amountCents: 144020,
+        descriptionNormalized: "PIX RECEBIDO",
+        externalId: "id-pix",
+      });
+      mockDb.select.mockReturnValueOnce(createDbChain([{ fingerprint: expectedFp }]));
+      // 6. despesas pendentes para match
+      mockDb.select.mockReturnValueOnce(createDbChain([]));
+      // 7. sameDayCandidates
+      mockDb.select.mockReturnValueOnce(createDbChain([]));
+
+      let insertedRowsPayload:
+        | Array<{
+            situation: string;
+            selected: boolean;
+            type: string;
+          }>
+        | undefined;
+
+      mockDb.insert.mockImplementation(() => {
+        const chain = createDbChain([{ id: batchId, lineNo: 1 }]);
+        const origValues = chain.values as (val: unknown) => unknown;
+        chain.values = vi.fn((val: unknown) => {
+          if (Array.isArray(val) && val.length > 0 && typeof val[0] === "object" && val[0] !== null && "situation" in val[0]) {
+            insertedRowsPayload = val as Array<{
+              situation: string;
+              selected: boolean;
+              type: string;
+            }>;
+          }
+          return origValues(val);
+        });
+        return chain;
+      });
+
+      const res = await uploadStatement(fd);
+      expect(res.ok).toBe(true);
+      expect(insertedRowsPayload).toBeDefined();
+      expect(insertedRowsPayload?.[0]?.type).toBe("receita");
+      expect(insertedRowsPayload?.[0]?.situation).toBe("duplicada");
+      expect(insertedRowsPayload?.[0]?.selected).toBe(false);
+    });
+
+    it("após desfazer o 1o lote (undoBatch), a reimportação da receita volta a ser Nova", async () => {
+      // Extrato com receita (Pix recebido)
+      const csv = "Data,Valor,Identificador,Descrição\n05/11/2026,1440.20,id-pix,Pix recebido";
+      const fd = new FormData();
+      const file = new File([csv], "extrato.csv", { type: "text/csv" });
+      fd.append("file", file);
+      fd.append("paymentMethodId", pmId);
+      fd.append("ownerMemberId", memberId);
+
+      // 1. paymentMethod existe
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([{ id: pmId, type: "conta", archived: false }]),
+      );
+      // 2. regras existentes
+      mockDb.select.mockReturnValueOnce(createDbChain([]));
+      // 3. membros da família
+      mockDb.select.mockReturnValueOnce(createDbChain([{ id: memberId, displayName: "Jefferson" }]));
+      // 4. despesas existentes
+      mockDb.select.mockReturnValueOnce(createDbChain([]));
+      // 5. getConfirmedIncomeFingerprints: como o lote foi desfeito (status: "desfeito"),
+      // a query filtra apenas por status: "confirmado", portanto retorna VAZIO!
+      mockDb.select.mockReturnValueOnce(createDbChain([]));
+      // 6. despesas pendentes
+      mockDb.select.mockReturnValueOnce(createDbChain([]));
+      // 7. sameDayCandidates
+      mockDb.select.mockReturnValueOnce(createDbChain([]));
+
+      let insertedRowsPayload:
+        | Array<{
+            situation: string;
+            selected: boolean;
+            type: string;
+          }>
+        | undefined;
+
+      mockDb.insert.mockImplementation(() => {
+        const chain = createDbChain([{ id: batchId, lineNo: 1 }]);
+        const origValues = chain.values as (val: unknown) => unknown;
+        chain.values = vi.fn((val: unknown) => {
+          if (Array.isArray(val) && val.length > 0 && typeof val[0] === "object" && val[0] !== null && "situation" in val[0]) {
+            insertedRowsPayload = val as Array<{
+              situation: string;
+              selected: boolean;
+              type: string;
+            }>;
+          }
+          return origValues(val);
+        });
+        return chain;
+      });
+
+      const res = await uploadStatement(fd);
+      expect(res.ok).toBe(true);
+      expect(insertedRowsPayload).toBeDefined();
+      expect(insertedRowsPayload?.[0]?.type).toBe("receita");
+      expect(insertedRowsPayload?.[0]?.situation).toBe("nova");
+      expect(insertedRowsPayload?.[0]?.selected).toBe(true);
+    });
   });
 
   describe("saveMapping", () => {
@@ -1087,6 +1213,8 @@ describe("importar actions", () => {
       mockDb.select.mockReturnValueOnce(createDbChain([{ id: pmId, type: "conta" }]));
 
       // Dentro da transação:
+      // candidate fingerprints (nenhum existente)
+      mockDb.select.mockReturnValueOnce(createDbChain([]));
       // 1. insert despesa
       mockDb.insert.mockReturnValueOnce(createDbChain([{ id: expenseId }]));
       // 2. select monthlyPeriods
@@ -1306,6 +1434,10 @@ describe("importar actions", () => {
       mockDb.select.mockReturnValueOnce(createDbChain([{ id: pmId, type: "conta", archived: false }]));
 
       // Dentro da transação:
+      // candidate expense fingerprints (nenhum existente)
+      mockDb.select.mockReturnValueOnce(createDbChain([]));
+      // candidate income fingerprints (nenhum existente)
+      mockDb.select.mockReturnValueOnce(createDbChain([]));
       // Para a receita:
       // select monthlyPeriods (não existe)
       mockDb.select.mockReturnValueOnce(createDbChain([]));
@@ -1349,6 +1481,430 @@ describe("importar actions", () => {
       if (res.ok) {
         expect(res.targetMonth).toBe("2026-11");
       }
+    });
+
+    it("linha com tipo 'ignorar' marcada nunca vira despesa nem receita na confirmação", async () => {
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([
+          {
+            id: batchId,
+            paymentMethodId: pmId,
+            status: "rascunho",
+          },
+        ]),
+      );
+
+      const rowsToConfirm = [
+        // Linha despesa normal
+        {
+          id: rowId1,
+          date: "2026-11-05",
+          descriptionOriginal: "Almoço",
+          amountCents: -4500,
+          type: "despesa",
+          categoryId,
+          ownerMemberId: memberId,
+          paymentMethodId: pmId,
+          linkedExpenseId: null,
+          fingerprint: "fp-almoco",
+        },
+        // Linha com tipo ignorar, mas marcada (selected = true)
+        {
+          id: rowId2,
+          date: "2026-11-05",
+          descriptionOriginal: "Pagamento Fatura",
+          amountCents: -144020,
+          type: "ignorar",
+          categoryId: null,
+          ownerMemberId: null,
+          paymentMethodId: pmId,
+          linkedExpenseId: null,
+          fingerprint: "fp-fatura",
+        },
+      ];
+
+      // 1. selectedRows
+      mockDb.select.mockReturnValueOnce(createDbChain(rowsToConfirm));
+      // 2. batchPaymentMethod
+      mockDb.select.mockReturnValueOnce(createDbChain([{ id: pmId, type: "conta", archived: false }]));
+
+      // Dentro da transação:
+      // candidate fingerprints
+      mockDb.select.mockReturnValueOnce(createDbChain([]));
+
+      const insertedRecords: Array<{ table: unknown; values: Record<string, unknown> }> = [];
+      mockDb.insert.mockImplementation((table: unknown) => {
+        const chain = createDbChain([{ id: "generated-id" }]);
+        chain.values = vi.fn((val: unknown) => {
+          if (typeof val === "object" && val !== null) {
+            insertedRecords.push({ table, values: val as Record<string, unknown> });
+          }
+          return chain;
+        });
+        return chain;
+      });
+
+      const res = await confirmBatch(batchId);
+      expect(res.ok).toBe(true);
+
+      // Apenas a despesa deve ter sido inserida, a linha 'ignorar' NUNCA vira despesa
+      const expenseInserts = insertedRecords.filter((r) => r.table === expenses);
+      expect(expenseInserts).toHaveLength(1);
+      expect(expenseInserts[0]?.values).toMatchObject({
+        description: "Almoço",
+        amountCents: 4500,
+        fingerprint: "fp-almoco",
+      });
+
+      // Nenhuma receita deve ter sido inserida
+      const periodInserts = insertedRecords.filter((r) => r.table === monthlyPeriods);
+      expect(periodInserts).toHaveLength(0);
+    });
+
+    it("lote com apenas linhas ignorar marcadas é rejeitado na confirmação sem gravar nada", async () => {
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([
+          {
+            id: batchId,
+            paymentMethodId: pmId,
+            status: "rascunho",
+          },
+        ]),
+      );
+
+      const rowsToConfirm = [
+        {
+          id: rowId1,
+          date: "2026-11-05",
+          descriptionOriginal: "Pagamento Fatura",
+          amountCents: -144020,
+          type: "ignorar",
+          categoryId: null,
+          ownerMemberId: null,
+          paymentMethodId: pmId,
+          linkedExpenseId: null,
+          fingerprint: "fp-fatura",
+        },
+      ];
+
+      mockDb.select.mockReturnValueOnce(createDbChain(rowsToConfirm));
+
+      const res = await confirmBatch(batchId);
+      expect(res.ok).toBe(false);
+      if (!res.ok) {
+        expect(res.error).toBe("Nenhum lançamento selecionado para confirmação.");
+      }
+      expect(mockDb.transaction).not.toHaveBeenCalled();
+    });
+
+    it("linha cujo fingerprint já existe em despesa ativa da família é pulada como duplicada sem erro", async () => {
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([
+          {
+            id: batchId,
+            paymentMethodId: pmId,
+            status: "rascunho",
+          },
+        ]),
+      );
+
+      const rowsToConfirm = [
+        // Despesa que já existe no banco (mesmo fingerprint)
+        {
+          id: rowId1,
+          date: "2026-11-05",
+          descriptionOriginal: "Farmácia Já Existente",
+          amountCents: -3000,
+          type: "despesa",
+          categoryId,
+          ownerMemberId: memberId,
+          paymentMethodId: pmId,
+          linkedExpenseId: null,
+          fingerprint: "fp-duplicated-1",
+        },
+        // Despesa nova
+        {
+          id: rowId2,
+          date: "2026-11-05",
+          descriptionOriginal: "Padaria Nova",
+          amountCents: -1500,
+          type: "despesa",
+          categoryId,
+          ownerMemberId: memberId,
+          paymentMethodId: pmId,
+          linkedExpenseId: null,
+          fingerprint: "fp-new-2",
+        },
+      ];
+
+      // 1. selectedRows
+      mockDb.select.mockReturnValueOnce(createDbChain(rowsToConfirm));
+      // 2. batchPaymentMethod
+      mockDb.select.mockReturnValueOnce(createDbChain([{ id: pmId, type: "conta", archived: false }]));
+
+      // Dentro da transação:
+      // candidate fingerprints retorna que "fp-duplicated-1" já existe em despesa ativa!
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([
+          {
+            id: "existing-exp-1",
+            fingerprint: "fp-duplicated-1",
+          },
+        ]),
+      );
+
+      const insertedRecords: Array<{ table: unknown; values: Record<string, unknown> }> = [];
+      mockDb.insert.mockImplementation((table: unknown) => {
+        const chain = createDbChain([{ id: "generated-new-id" }]);
+        chain.values = vi.fn((val: unknown) => {
+          if (typeof val === "object" && val !== null) {
+            insertedRecords.push({ table, values: val as Record<string, unknown> });
+          }
+          return chain;
+        });
+        return chain;
+      });
+
+      const updatedRows: Array<{ set: Record<string, unknown>; where: unknown }> = [];
+      mockDb.update.mockImplementation((table: unknown) => {
+        const chain = createDbChain([]);
+        chain.set = vi.fn((setVal: unknown) => {
+          if (table === importRows && typeof setVal === "object" && setVal !== null) {
+            updatedRows.push({ set: setVal as Record<string, unknown>, where: null });
+          }
+          return chain;
+        });
+        return chain;
+      });
+
+      const res = await confirmBatch(batchId);
+      expect(res.ok).toBe(true);
+
+      // Apenas a despesa nova deve ser inserida, a duplicada é pulada
+      const expenseInserts = insertedRecords.filter((r) => r.table === expenses);
+      expect(expenseInserts).toHaveLength(1);
+      expect(expenseInserts[0]?.values).toMatchObject({
+        description: "Padaria Nova",
+        fingerprint: "fp-new-2",
+      });
+
+      // A linha duplicada deve ter sido marcada como situação 'duplicada' em importRows
+      const duplicateRowUpdate = updatedRows.find((u) => u.set.situation === "duplicada");
+      expect(duplicateRowUpdate).toBeDefined();
+      expect(duplicateRowUpdate?.set).toMatchObject({
+        situation: "duplicada",
+        matchedExpenseId: "existing-exp-1",
+      });
+    });
+
+    it("duas linhas iguais no mesmo lote: 1 despesa criada, a 2a vira duplicada com matchedExpenseId = id da 1a", async () => {
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([
+          {
+            id: batchId,
+            paymentMethodId: pmId,
+            status: "rascunho",
+          },
+        ]),
+      );
+
+      // Duas linhas com o MESMO fingerprint no mesmo lote
+      const rowsToConfirm = [
+        {
+          id: "row-same-1",
+          date: "2026-11-05",
+          descriptionOriginal: "Assinatura Software",
+          amountCents: -9900,
+          type: "despesa",
+          categoryId,
+          ownerMemberId: memberId,
+          paymentMethodId: pmId,
+          linkedExpenseId: null,
+          fingerprint: "fp-duplicate-in-same-batch",
+        },
+        {
+          id: "row-same-2",
+          date: "2026-11-05",
+          descriptionOriginal: "Assinatura Software",
+          amountCents: -9900,
+          type: "despesa",
+          categoryId,
+          ownerMemberId: memberId,
+          paymentMethodId: pmId,
+          linkedExpenseId: null,
+          fingerprint: "fp-duplicate-in-same-batch",
+        },
+      ];
+
+      // 1. selectedRows
+      mockDb.select.mockReturnValueOnce(createDbChain(rowsToConfirm));
+      // 2. batchPaymentMethod
+      mockDb.select.mockReturnValueOnce(createDbChain([{ id: pmId, type: "conta", archived: false }]));
+
+      // Dentro da transação:
+      // candidate fingerprints retorna vazio do banco (nenhum pré-existente)
+      mockDb.select.mockReturnValueOnce(createDbChain([]));
+
+      const firstExpenseId = "exp-first-created-123";
+      const insertedRecords: Array<{ table: unknown; values: Record<string, unknown> }> = [];
+      mockDb.insert.mockImplementation((table: unknown) => {
+        const chain = createDbChain([{ id: firstExpenseId }]);
+        chain.values = vi.fn((val: unknown) => {
+          if (typeof val === "object" && val !== null) {
+            insertedRecords.push({ table, values: val as Record<string, unknown> });
+          }
+          return chain;
+        });
+        return chain;
+      });
+
+      const updatedRows: Array<{ set: Record<string, unknown>; where: unknown }> = [];
+      mockDb.update.mockImplementation((table: unknown) => {
+        const chain = createDbChain([]);
+        chain.set = vi.fn((setVal: unknown) => {
+          if (table === importRows && typeof setVal === "object" && setVal !== null) {
+            updatedRows.push({ set: setVal as Record<string, unknown>, where: null });
+          }
+          return chain;
+        });
+        return chain;
+      });
+
+      const res = await confirmBatch(batchId);
+      expect(res.ok).toBe(true);
+
+      // Apenas 1 despesa deve ter sido criada no banco
+      const expenseInserts = insertedRecords.filter((r) => r.table === expenses);
+      expect(expenseInserts).toHaveLength(1);
+      expect(expenseInserts[0]?.values).toMatchObject({
+        description: "Assinatura Software",
+        amountCents: 9900,
+        fingerprint: "fp-duplicate-in-same-batch",
+      });
+
+      // A 2a linha deve ter sido marcada como situação 'duplicada' e com matchedExpenseId = id da 1a despesa criada!
+      const duplicateRowUpdate = updatedRows.find((u) => u.set.situation === "duplicada");
+      expect(duplicateRowUpdate).toBeDefined();
+      expect(duplicateRowUpdate?.set).toMatchObject({
+        situation: "duplicada",
+        matchedExpenseId: firstExpenseId,
+      });
+    });
+
+    it("forçar confirmação de receita duplicada não soma de novo na renda e marca como duplicada", async () => {
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([
+          {
+            id: batchId,
+            paymentMethodId: pmId,
+            status: "rascunho",
+          },
+        ]),
+      );
+
+      const forcedDuplicateIncomeRow = {
+        id: rowId1,
+        date: "2026-11-05",
+        descriptionOriginal: "Pix recebido",
+        amountCents: 144020,
+        type: "receita",
+        categoryId: null,
+        ownerMemberId: memberId,
+        paymentMethodId: pmId,
+        linkedExpenseId: null,
+        fingerprint: "fp-dup-income-1440",
+      };
+
+      // 1. selectedRows (usuário forçou marcando selected: true)
+      mockDb.select.mockReturnValueOnce(createDbChain([forcedDuplicateIncomeRow]));
+      // 2. batchPaymentMethod
+      mockDb.select.mockReturnValueOnce(createDbChain([{ id: pmId, type: "conta", archived: false }]));
+
+      // Dentro da transação:
+      // candidateIncomeFingerprints: simula que o fingerprint JÁ existe em lote confirmado
+      mockDb.select.mockReturnValueOnce(createDbChain([{ fingerprint: "fp-dup-income-1440" }]));
+
+      const updatedRows: Array<{ set: Record<string, unknown> }> = [];
+      const updatedIncomes: Array<{ set: Record<string, unknown> }> = [];
+
+      mockDb.update.mockImplementation((table: unknown) => {
+        const chain = createDbChain([]);
+        chain.set = vi.fn((setVal: unknown) => {
+          if (table === importRows && typeof setVal === "object" && setVal !== null) {
+            updatedRows.push({ set: setVal as Record<string, unknown> });
+          }
+          if (table === memberIncomes && typeof setVal === "object" && setVal !== null) {
+            updatedIncomes.push({ set: setVal as Record<string, unknown> });
+          }
+          return chain;
+        });
+        return chain;
+      });
+
+      const res = await confirmBatch(batchId);
+      expect(res.ok).toBe(true);
+
+      // A linha deve ter sido marcada como duplicada e desmarcada (selected: false)
+      const rowUpdate = updatedRows.find((u) => u.set.situation === "duplicada");
+      expect(rowUpdate).toBeDefined();
+      expect(rowUpdate?.set).toMatchObject({
+        situation: "duplicada",
+        selected: false,
+      });
+
+      // memberIncomes NÃO deve ter sido atualizado (não somou de novo!)
+      expect(updatedIncomes).toHaveLength(0);
+    });
+
+    it("erro cru do banco na confirmação vira mensagem amigável em pt-BR e é logado com console.error", async () => {
+      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([
+          {
+            id: batchId,
+            paymentMethodId: pmId,
+            status: "rascunho",
+          },
+        ]),
+      );
+
+      const rowsToConfirm = [
+        {
+          id: rowId1,
+          date: "2026-11-05",
+          descriptionOriginal: "Compra",
+          amountCents: -5000,
+          type: "despesa",
+          categoryId,
+          ownerMemberId: memberId,
+          paymentMethodId: pmId,
+          linkedExpenseId: null,
+          fingerprint: "fp-raw-err",
+        },
+      ];
+
+      mockDb.select.mockReturnValueOnce(createDbChain(rowsToConfirm));
+      mockDb.select.mockReturnValueOnce(createDbChain([{ id: pmId, type: "conta", archived: false }]));
+
+      // Simula erro cru do Drizzle / PostgreSQL estourando constraint
+      mockDb.transaction.mockRejectedValueOnce(
+        new Error('Failed query: insert into "expenses" ("family_id", "fingerprint") values ($1, $2)'),
+      );
+
+      const res = await confirmBatch(batchId);
+      expect(res.ok).toBe(false);
+      if (!res.ok) {
+        expect(res.error).toBe(
+          "Não foi possível confirmar a importação. Nada foi gravado. Tente de novo.",
+        );
+        // Garante que a query crua de erro NÃO vazou para o cliente
+        expect(res.error).not.toMatch(/Failed query/);
+        expect(res.error).not.toMatch(/expenses/);
+      }
+
+      expect(consoleErrorSpy).toHaveBeenCalled();
+      consoleErrorSpy.mockRestore();
     });
 
     describe("computeTargetMonth", () => {

@@ -2,7 +2,7 @@
 
 import { shortDate } from "@/lib/dates";
 import { formatBRL } from "@/lib/money";
-import { formatSignedAmount } from "./helpers";
+import { formatSignedAmount, isRowSelectable } from "./helpers";
 import { SituationBadge } from "./SituationBadge";
 import type { CategoryOption, ImportRowReviewItem, MemberOption } from "./types";
 
@@ -46,7 +46,9 @@ export function ReviewMobileCards({
   return (
     <div className="cc-list cc-only-sm" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {rows.map((row) => {
-        const isSelected = selectedIds.has(row.id);
+        const isSelectable = isRowSelectable(row);
+        const isIgnored = !isSelectable;
+        const isSelected = selectedIds.has(row.id) && isSelectable;
         const isExpense = row.type === "despesa";
         const isIncome = row.type === "receita" || row.type === "salario";
         const isMissingCategory = isExpense && !row.categoryId && isSelected;
@@ -64,7 +66,7 @@ export function ReviewMobileCards({
               backgroundColor: isSelected
                 ? "var(--surface-raised)"
                 : "var(--surface-sunken)",
-              opacity: row.type === "ignorar" ? 0.65 : 1,
+              opacity: isIgnored ? 0.65 : 1,
               border: isMissingCategory || isMissingOwner ? "1px solid var(--danger)" : undefined,
               boxShadow: isMissingCategory || isMissingOwner ? "inset 3px 0 0 var(--danger)" : undefined,
             }}
@@ -79,14 +81,17 @@ export function ReviewMobileCards({
                     minHeight: "40px",
                     display: "inline-flex",
                     alignItems: "center",
-                    cursor: "pointer",
+                    cursor: !isSelectable ? "not-allowed" : "pointer",
                   }}
                 >
                   <input
                     type="checkbox"
                     checked={isSelected}
                     onChange={() => onToggleSelectRow(row.id)}
-                    disabled={isPending}
+                    disabled={isPending || !isSelectable}
+                    aria-describedby={
+                      !isSelectable ? `m-ignore-reason-${row.id}` : undefined
+                    }
                     aria-label={`Selecionar ${row.descriptionOriginal}`}
                   />
                 </label>
@@ -108,6 +113,15 @@ export function ReviewMobileCards({
             {/* Description */}
             <div>
               <div style={{ fontWeight: 600 }}>{row.descriptionOriginal}</div>
+              {!isSelectable && (
+                <div
+                  id={`m-ignore-reason-${row.id}`}
+                  className="caption cc-muted"
+                  style={{ marginTop: 2 }}
+                >
+                  Ignorada: não será gravada
+                </div>
+              )}
               {row.ignoreReason && (
                 <div className="caption cc-muted">Motivo: {row.ignoreReason}</div>
               )}
@@ -227,7 +241,7 @@ export function ReviewMobileCards({
                   }}
                   value={row.ownerMemberId ?? ""}
                   onChange={(e) => onUpdateRowOwner(row.id, e.target.value || null)}
-                  disabled={isPending || row.type === "ignorar"}
+                  disabled={isPending || !isSelectable}
                   aria-label={`Responsável por ${row.descriptionOriginal}`}
                   aria-invalid={isMissingOwner ? true : undefined}
                   aria-describedby={isMissingOwner ? `m-owner-err-${row.id}` : undefined}

@@ -5,6 +5,9 @@ import {
   formatSignedAmount,
   getDisabledProceedReason,
   getSituationLabel,
+  isRowAutoSelected,
+  isRowSelectable,
+  sanitizeErrorMessage,
 } from "./_components/helpers";
 import type { ImportRowReviewItem } from "./_components/types";
 
@@ -133,6 +136,50 @@ describe("computeReviewTotals", () => {
     expect(totals.selectedCount).toBe(0);
     expect(totals.canProceedToConfirm).toBe(false);
   });
+
+  it("linhas com tipo 'ignorar' NUNCA incrementam selectedCount nem valores mesmo se presentes em selectedIds", () => {
+    const rows: ImportRowReviewItem[] = [
+      mockRow({ id: "1", type: "despesa", amountCents: -5000, categoryId: "cat-1" }),
+      mockRow({
+        id: "2",
+        type: "ignorar",
+        amountCents: -144020,
+        situation: "duplicada",
+        descriptionOriginal: "Pagamento efetuado - Pagamento Fatura",
+        categoryId: null,
+      }),
+      mockRow({ id: "3", type: "receita", amountCents: 120000, ownerMemberId: "m-1" }),
+    ];
+
+    // Simula '2' estando em selectedIds por engano
+    const selected = new Set(["1", "2", "3"]);
+    const totals = computeReviewTotals(rows, selected);
+
+    expect(totals.selectedCount).toBe(2); // só 1 e 3
+    expect(totals.expensesCents).toBe(5000); // 144020 NÃO é somado
+    expect(totals.incomesCents).toBe(120000);
+    expect(totals.missingCategoryCount).toBe(0); // linha 2 sem categoria NÃO bloqueia
+    expect(totals.canProceedToConfirm).toBe(true);
+  });
+
+  it("se apenas linhas ignoradas estiverem em selectedIds, selectedCount é 0 e bloqueia avanço", () => {
+    const rows: ImportRowReviewItem[] = [
+      mockRow({
+        id: "1",
+        type: "ignorar",
+        amountCents: -144020,
+        situation: "duplicada",
+      }),
+    ];
+
+    const selected = new Set(["1"]);
+    const totals = computeReviewTotals(rows, selected);
+
+    expect(totals.selectedCount).toBe(0);
+    expect(totals.expensesCents).toBe(0);
+    expect(totals.incomesCents).toBe(0);
+    expect(totals.canProceedToConfirm).toBe(false);
+  });
 });
 
 describe("formatSignedAmount", () => {
@@ -235,6 +282,81 @@ describe("getDisabledProceedReason", () => {
       })
     ).toBe(
       "Defina a categoria de 2 despesas e o responsável de 1 receita para continuar."
+    );
+  });
+});
+
+describe("isRowAutoSelected", () => {
+  it("marca 'nova' por padrão quando não for ignorada", () => {
+    expect(isRowAutoSelected({ situation: "nova", type: "despesa" })).toBe(true);
+    expect(isRowAutoSelected({ situation: "nova", type: "receita" })).toBe(true);
+    expect(isRowAutoSelected({ situation: "nova", type: "salario" })).toBe(true);
+  });
+
+  it("desmarca 'duplicada' por padrão", () => {
+    expect(isRowAutoSelected({ situation: "duplicada", type: "despesa" })).toBe(false);
+    expect(isRowAutoSelected({ situation: "duplicada", type: "receita" })).toBe(false);
+  });
+
+  it("desmarca 'ignorar' SEMPRE, mesmo com situação 'nova'", () => {
+    expect(isRowAutoSelected({ situation: "nova", type: "ignorar" })).toBe(false);
+    expect(isRowAutoSelected({ situation: "duplicada", type: "ignorar" })).toBe(false);
+    expect(isRowAutoSelected({ situation: "possivel_vinculo", type: "ignorar" })).toBe(false);
+  });
+
+  it("marca 'possivel_vinculo' por padrão quando não for ignorada", () => {
+    expect(isRowAutoSelected({ situation: "possivel_vinculo", type: "despesa" })).toBe(true);
+  });
+});
+
+describe("isRowSelectable", () => {
+  it("permite seleção de despesas, receitas e salários", () => {
+    expect(isRowSelectable({ type: "despesa" })).toBe(true);
+    expect(isRowSelectable({ type: "receita" })).toBe(true);
+    expect(isRowSelectable({ type: "salario" })).toBe(true);
+  });
+
+  it("não permite seleção de linhas com tipo ignorar", () => {
+    expect(isRowSelectable({ type: "ignorar" })).toBe(false);
+  });
+});
+
+describe("sanitizeErrorMessage", () => {
+  it("mascara erros crus de consulta SQL do Drizzle", () => {
+    const rawError = 'Failed query: insert into "expenses" ("id", "family_id", "fingerprint") values ($1, $2, $3) params: [a, b, c]';
+    const sanitized = sanitizeErrorMessage(rawError);
+    expect(sanitized).not.toContain("Failed query");
+    expect(sanitized).not.toContain("insert into");
+    expect(sanitized).toBe(
+      "Não foi possível confirmar o lote devido a um erro no banco de dados. Verifique os lançamentos e tente novamente."
+    );
+  });
+
+  it("trata erro de duplicidade com mensagem específica orientando o usuário", () => {
+    const rawError = 'error: duplicate key value violates unique constraint "expenses_family_fingerprint_uq"';
+    const sanitized = sanitizeErrorMessage(rawError);
+    expect(sanitized).not.toContain("expenses_family_fingerprint_uq");
+    expect(sanitized).toBe(
+      "Não foi possível confirmar o lote porque um ou mais lançamentos já foram importados anteriormente nesta família. Revise os lançamentos duplicados e tente novamente."
+    );
+  });
+
+  it("preserva mensagens amigáveis de validação de negócio", () => {
+    expect(
+      sanitizeErrorMessage("Todas as despesas selecionadas devem ter uma categoria definida.")
+    ).toBe("Todas as despesas selecionadas devem ter uma categoria definida.");
+
+    expect(
+      sanitizeErrorMessage("O mês 2026-10 está fechado para edição.")
+    ).toBe("O mês 2026-10 está fechado para edição.");
+  });
+
+  it("fornece fallback seguro para mensagens vazias ou nulas", () => {
+    expect(sanitizeErrorMessage(null)).toBe(
+      "Ocorreu um erro inesperado ao processar a solicitação."
+    );
+    expect(sanitizeErrorMessage(undefined)).toBe(
+      "Ocorreu um erro inesperado ao processar a solicitação."
     );
   });
 });
