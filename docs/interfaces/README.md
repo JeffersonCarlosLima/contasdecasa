@@ -45,11 +45,11 @@ formato, tamanho e hierarquia.
 ## Casca do app (todas as telas autenticadas)
 
 **Menu lateral (desktop):** logo "Contas da Casa" (display 22px) · nav: Dashboard, Despesas,
-Fechamento do mês, Tipos de despesa, Família (item ativo com `brand-soft`/`brand-ink`) ·
-botão primário "Lançar despesa" · rodapé: avatar da pessoa, nome, "{Família} · {n} membros".
+Fechamento do mês, Tipos e formas, Família (item ativo com `brand-soft`/`brand-ink`) ·
+botão primário "Lançar despesa" · rodapé: avatar da pessoa, nome, "{Família} · {n} membros" como Link para `/conta` (`aria-label="Minha conta"`, alvo ≥ 40px, foco visível).
 Na tela "Lançar despesa" o botão primário do menu não aparece.
 
-**Celular:** cabeçalho com o título da tela (ou logo) e avatar à direita; barra inferior como acima.
+**Celular:** cabeçalho com o título da tela (ou logo) e avatar à direita como Link para `/conta` (`aria-label="Minha conta"`, alvo ≥ 40px, foco visível); barra inferior como acima.
 Na tela "Lançar despesa" não há barra inferior; o cabeçalho tem botão "Voltar" e título.
 
 ## Mapa tela → rota → arquivo
@@ -62,12 +62,11 @@ Na tela "Lançar despesa" não há barra inferior; o cabeçalho tem botão "Volt
 | Despesas | `/despesas` | [04-despesas.md](04-despesas.md) | `Despesas.dc.html` |
 | Lançar despesa | `/despesas/nova`, `/despesas/[id]` | [05-lancar-despesa.md](05-lancar-despesa.md) | `NovaDespesa.dc.html` |
 | Fechamento do mês | `/mes` | [06-fechamento.md](06-fechamento.md) | `Fechamento.dc.html` |
-| Tipos de despesa | `/tipos` | [07-tipos-de-despesa.md](07-tipos-de-despesa.md) | `Categorias.dc.html` |
+| Tipos e formas | `/tipos` | [07-tipos-de-despesa.md](07-tipos-de-despesa.md) | `Categorias.dc.html` |
 | Família e membros | `/familia` | [08-familia.md](08-familia.md) | `Familia.dc.html` |
+| Importação de extratos | `/importar`, `/importar/[id]`, `/importar/[id]/confirmar`, `/importar/historico` | [09-telas-sem-prototipo.md](09-telas-sem-prototipo.md) | Sem protótipo |
 
-Telas sem protótipo (`/convite/[token]`, `/conta`): seguir a mesma casca, componentes e textos de
-`01-entrar.md`/`08-familia.md`; peça aprovação do layout antes de implementar (ver
-[09-telas-sem-prototipo.md](09-telas-sem-prototipo.md)).
+Telas sem protótipo (`/convite/[token]`, `/conta`, `/importar` e sub-rotas): seguir a mesma casca, componentes e textos descritos em [09-telas-sem-prototipo.md](09-telas-sem-prototipo.md).
 
 ## Componentes a portar (React, em `src/components/ui`)
 

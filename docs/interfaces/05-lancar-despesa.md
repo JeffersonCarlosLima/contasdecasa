@@ -19,7 +19,7 @@ Link "← Despesas" (`label`) e `heading` **"Lançar despesa"**.
 3. Grade `cc-form`:
    - **De quem é a despesa** (largura total, chips com avatar): um por membro (o usuário vê "(você)") +
      **"Família (dividir)"**. Hint: **"Família" divide a despesa entre {participantes}, {regra}. Lançado por {usuário}.**
-   - **Forma de pagamento** (`select`: Boleto / Pix, Nubank, Bradesco, Inter, C6 … das formas cadastradas).
+   - **Forma de pagamento** (`select`: lê apenas as **formas ativas** cadastradas da família, ex.: Nubank, Bradesco, Inter…; formas arquivadas não aparecem para novos lançamentos). Ao selecionar um cartão com dias de fechamento e vencimento configurados, o formulário sugere automaticamente o mês de referência e a data de vencimento a partir da data atual (regra de fatura); o usuário pode alterar livremente. Cartão sem dias configurados mantém o comportamento padrão.
    - **Status** — segmentado **Pendente | Pago**.
    - **Quem pagou (quando pago)** — `select` de membros (desabilitado enquanto Pendente).
 4. Bloco `surface-sunken` (padding 16, gap 12):
@@ -37,3 +37,4 @@ Link "← Despesas" (`label`) e `heading` **"Lançar despesa"**.
 - Parcelado gera as parcelas futuras no mesmo grupo; editar/excluir pergunta "Só esta" ou "Esta e as próximas".
 - Erro de valor: "Informe um valor maior que zero."
 - Membro comum só edita as próprias e as da Família; admin/dono editam todas.
+- **Formas de pagamento e sugestão de fatura**: apenas formas ativas são listadas no formulário. Se a forma escolhida for um cartão com dia de fechamento e dia de vencimento, o sistema sugere o mês e o vencimento da despesa aplicando a regra da fatura a partir da data de hoje: compra com dia ≤ fechamento entra na fatura que fecha no mesmo mês, dia > fechamento na do mês seguinte; vencimento no mesmo mês do fechamento se vencimento > fechamento, senão no mês seguinte; dia inexistente ajustado ao último dia do mês; o mês da despesa (`reference_month`) é o mês do vencimento (ver detalhes e exemplos em `docs/specs/02-regras-calculo.md`). No formulário isso é apenas uma sugestão inicial e o usuário tem total liberdade para manter ou alterar os valores sugeridos. Cartão sem dias configurados mantém o comportamento padrão.

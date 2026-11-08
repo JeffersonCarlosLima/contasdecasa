@@ -9,12 +9,14 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { cents, id, timestamps } from "./columns";
 import { expenseStatus, investMode, splitRule } from "./enums";
 import { categories, families, familyMembers, paymentMethods } from "./family";
+import { importBatches } from "./import";
 
 export const monthlyPeriods = pgTable(
   "monthly_periods",
@@ -107,6 +109,8 @@ export const expenses = pgTable(
     installmentNumber: integer("installment_number"),
     installmentTotal: integer("installment_total"),
     recurringId: uuid("recurring_id").references(() => recurringExpenses.id),
+    importBatchId: uuid("import_batch_id").references(() => importBatches.id),
+    fingerprint: text("fingerprint"),
     notes: text("notes"),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
     ...timestamps,
@@ -115,5 +119,13 @@ export const expenses = pgTable(
     index("expenses_family_month_idx").on(t.familyId, t.referenceMonth),
     index("expenses_family_due_idx").on(t.familyId, t.dueDate),
     index("expenses_installment_group_idx").on(t.installmentGroupId),
+    index("expenses_import_batch_idx").on(t.importBatchId),
+    uniqueIndex("expenses_family_fingerprint_uq")
+      .on(t.familyId, t.fingerprint)
+      .where(sql`${t.fingerprint} is not null and ${t.deletedAt} is null`),
+    check(
+      "expenses_reference_month_day1",
+      sql`extract(day from ${t.referenceMonth}) = 1`,
+    ),
   ],
 );

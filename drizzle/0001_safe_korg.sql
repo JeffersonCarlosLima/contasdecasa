@@ -1,0 +1,1 @@
+ALTER TABLE "family_invites" ALTER COLUMN "email" DROP NOT NULL;
