@@ -3,6 +3,8 @@
 import { useId, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { currentMonth } from "@/lib/dates";
+import { formatReferenceMonth, parseReferenceMonth } from "@/lib/import/reference-month";
 import { FileDropzone } from "./FileDropzone";
 import { MappingStep } from "./MappingStep";
 import { validateFile } from "./helpers";
@@ -18,6 +20,7 @@ export function UploadForm({
   const router = useRouter();
   const ownerSelectId = useId();
   const paymentMethodSelectId = useId();
+  const referenceMonthId = useId();
 
   const [step, setStep] = useState<"upload" | "mapping">("upload");
   const [file, setFile] = useState<File | null>(null);
@@ -37,7 +40,13 @@ export function UploadForm({
     paymentMethods[0]?.id ?? ""
   );
 
+  // Mês/ano de referência (competência) do lote; mês atual por padrão.
+  const [referenceMonth, setReferenceMonth] = useState<string>(() => currentMonth());
+  const referenceMonthDate = parseReferenceMonth(referenceMonth);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Mantém o botão travado enquanto a navegação para a revisão acontece (evita duplo envio).
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const [generalError, setGeneralError] = useState<string>("");
   const [mappingError, setMappingError] = useState<string>("");
 
@@ -78,6 +87,12 @@ export function UploadForm({
       return;
     }
 
+    if (!referenceMonthDate) {
+      setGeneralError("Informe o mês de referência no formato MM/AAAA.");
+      return;
+    }
+
+    if (isSubmitting || isRedirecting) return;
     setIsSubmitting(true);
 
     try {
@@ -85,10 +100,12 @@ export function UploadForm({
       formData.append("file", file);
       formData.append("paymentMethodId", paymentMethodId);
       formData.append("ownerMemberId", ownerMemberId);
+      formData.append("referenceMonth", referenceMonth);
 
       const result = await uploadStatement(formData);
 
       if (result.ok) {
+        setIsRedirecting(true);
         router.push(`/importar/${result.batchId}`);
         return;
       }
@@ -142,11 +159,13 @@ export function UploadForm({
       formData.append("file", file);
       formData.append("paymentMethodId", paymentMethodId);
       formData.append("ownerMemberId", ownerMemberId);
+      formData.append("referenceMonth", referenceMonth);
       formData.append("mappingId", mapRes.mappingId);
 
       const uploadRes = await uploadStatement(formData);
 
       if (uploadRes.ok) {
+        setIsRedirecting(true);
         router.push(`/importar/${uploadRes.batchId}`);
         return;
       }
@@ -263,6 +282,35 @@ export function UploadForm({
           )}
         </label>
 
+        {/* Mês de referência */}
+        <div className="cc-field">
+          <label className="cc-field__label" htmlFor={referenceMonthId}>
+            Mês de referência (MM/AAAA)
+          </label>
+          <span className={`cc-input${referenceMonthDate ? "" : " cc-input--error"}`}>
+            <input
+              id={referenceMonthId}
+              type="month"
+              className="cc-input__text"
+              style={{ height: 44 }}
+              value={referenceMonth}
+              required
+              pattern="\d{4}-\d{2}"
+              placeholder="MM/AAAA"
+              disabled={isSubmitting || isRedirecting}
+              aria-invalid={!referenceMonthDate}
+              onChange={(e) => setReferenceMonth(e.target.value)}
+            />
+          </span>
+          <span
+            className={`cc-field__hint${referenceMonthDate ? "" : " cc-field__hint--error"}`}
+          >
+            {referenceMonthDate
+              ? `Todos os lançamentos serão gravados em ${formatReferenceMonth(referenceMonthDate)}. A data original de cada transação é mantida.`
+              : "Informe um mês válido."}
+          </span>
+        </div>
+
         {/* Forma de Pagamento */}
         <div className="cc-field">
           <div
@@ -332,9 +380,21 @@ export function UploadForm({
         <button
           type="submit"
           className="cc-btn cc-btn--primary"
-          disabled={isSubmitting || !file || Boolean(fileError) || paymentMethods.length === 0}
+          disabled={
+            isSubmitting ||
+            isRedirecting ||
+            !file ||
+            Boolean(fileError) ||
+            !referenceMonthDate ||
+            paymentMethods.length === 0
+          }
+          aria-busy={isSubmitting || isRedirecting}
         >
-          {isSubmitting ? "Enviando e processando…" : "Enviar e processar"}
+          {isRedirecting
+            ? "Abrindo revisão…"
+            : isSubmitting
+              ? "Enviando e processando…"
+              : "Enviar e processar"}
         </button>
       </div>
     </form>

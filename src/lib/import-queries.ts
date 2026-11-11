@@ -30,6 +30,8 @@ export interface ImportBatchListItem {
   confirmedAt: Date | null;
   undoneAt: Date | null;
   createdAt: Date;
+  /** Competência escolhida no envio ("YYYY-MM-01"); nulo em lotes antigos. */
+  referenceMonth: string | null;
 }
 
 export interface ImportRowReviewItem {
@@ -147,6 +149,7 @@ export async function listBatches(familyId: string): Promise<ImportBatchListItem
     confirmedAt: r.batch.confirmedAt,
     undoneAt: r.batch.undoneAt,
     createdAt: r.batch.createdAt,
+    referenceMonth: r.batch.referenceMonth,
   }));
 }
 
@@ -205,6 +208,7 @@ export async function getBatchReview(
     confirmedAt: batchRow.batch.confirmedAt,
     undoneAt: batchRow.batch.undoneAt,
     createdAt: batchRow.batch.createdAt,
+    referenceMonth: batchRow.batch.referenceMonth,
   };
 
   const rowOwnerMember = alias(familyMembers, "row_owner_member");
@@ -473,6 +477,8 @@ export async function getConfirmedIncomeFingerprints(
 export async function getBatchSummary(
   familyId: string,
   batchId: string,
+  /** Competência do lote ("YYYY-MM-01"); quando informada, as receitas contam nesse mês. */
+  batchReferenceMonth?: string | null,
 ): Promise<BatchSummary> {
   const createdExpenses = await db
     .select({ referenceMonth: expenses.referenceMonth })
@@ -484,6 +490,8 @@ export async function getBatchSummary(
         isNull(expenses.deletedAt),
       ),
     );
+
+  const batchMonthKey = batchReferenceMonth ? toMonthKey(batchReferenceMonth) : null;
 
   const monthCounts = new Map<string, number>();
   for (const exp of createdExpenses) {
@@ -533,7 +541,7 @@ export async function getBatchSummary(
       (r.targetMemberIncomeId || r.selected)
     ) {
       incomesCount += 1;
-      incomeMonthsSet.add(r.date.slice(0, 7));
+      incomeMonthsSet.add(batchMonthKey ?? r.date.slice(0, 7));
     }
   }
 

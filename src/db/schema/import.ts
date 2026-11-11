@@ -56,6 +56,8 @@ export const importBatches = pgTable(
     fileSize: integer("file_size").notNull(),
     rowCount: integer("row_count").notNull().default(0),
     status: importBatchStatus("status").notNull().default("rascunho"),
+    /** Competência escolhida no envio (dia 1 do mês). Nulo apenas em lotes antigos. */
+    referenceMonth: date("reference_month", { mode: "string" }),
     importedBy: uuid("imported_by")
       .notNull()
       .references(() => familyMembers.id),
