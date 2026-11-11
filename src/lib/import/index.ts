@@ -6,3 +6,4 @@ export * from "./parse";
 export * from "./classify";
 export * from "./dedup";
 
+export * from "./reference-month";

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
 import { formatBRL } from "@/lib/money";
+import { formatReferenceMonth, referenceMonthLong } from "@/lib/import/reference-month";
 import { confirmBatch } from "@/app/(app)/importar/actions";
 import {
   computeReviewTotals,
@@ -169,6 +170,14 @@ export function ConfirmBatchView({ data }: ConfirmBatchViewProps) {
             <span style={{ fontWeight: 600 }}>{batch.paymentMethod.name}</span>
           </div>
           <div style={{ display: "flex", flexDirection: "column" }}>
+            <span className="caption cc-muted">Mês de referência</span>
+            <span style={{ fontWeight: 600 }}>
+              {batch.referenceMonth
+                ? `${formatReferenceMonth(batch.referenceMonth)} (${referenceMonthLong(batch.referenceMonth)})`
+                : "Pela data de cada lançamento"}
+            </span>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column" }}>
             <span className="caption cc-muted">Total no arquivo</span>
             <span>{totals.totalRows} linhas</span>
           </div>
@@ -217,7 +226,9 @@ export function ConfirmBatchView({ data }: ConfirmBatchViewProps) {
             onClick={handleConfirm}
             disabled={!totals.canProceedToConfirm || isConfirming}
           >
-            {isConfirming ? "Confirmando lançamentos…" : "Confirmar importação"}
+            {isConfirming
+              ? "Confirmando lançamentos…"
+              : `Confirmar importação${batch.referenceMonth ? ` em ${formatReferenceMonth(batch.referenceMonth)}` : ""}`}
           </button>
         </div>
       </div>

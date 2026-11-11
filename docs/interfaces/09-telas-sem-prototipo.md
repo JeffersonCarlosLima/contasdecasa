@@ -24,6 +24,8 @@ Fluxo para importação de extratos bancários e faturas de cartão (arquivos OF
 - Link "Gerenciar formas de pagamento" visível apenas para admin/dono.
 - Para arquivos CSV: passo intermediário de mapeamento de colunas (data, descrição, valor) com prévia das primeiras linhas.
 
+- Campo obrigatório **Mês de referência (MM/AAAA)**, mês atual por padrão; todo o lote é gravado nessa competência. Botão fica travado durante o processamento. *(Adição pendente de aprovação do Jefferson.)*
+
 ### `/importar/[id]` (Revisão do Lote)
 - Lista e classificação dos lançamentos importados com sugestões automáticas por regras ou histórico (tipo, categoria, responsável, ignorar).
 - Desktop: tabela de revisão (`ReviewTable`) com ações em lote (`BulkActionsBar`) e botão primário **"Continuar para confirmação ({n})"** nas ações do topo (`.cc-top .cc-actions`).

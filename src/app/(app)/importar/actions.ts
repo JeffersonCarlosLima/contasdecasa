@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, lte, or } from "drizzle-orm";
 import { db } from "@/db";
 import {
@@ -14,6 +15,7 @@ import {
   paymentMethods,
 } from "@/db/schema";
 import { cardInvoice } from "@/lib/card-invoice";
+import { dueDateInMonth, parseReferenceMonth } from "@/lib/import/reference-month";
 import { todayISO } from "@/lib/dates";
 import {
   applyRules,
@@ -122,6 +124,12 @@ export async function uploadStatement(formData: FormData): Promise<UploadStateme
 
     if (!paymentMethodId || typeof paymentMethodId !== "string") {
       return { ok: false, error: "Forma de pagamento é obrigatória." };
+    }
+
+    // Mês/ano de referência (competência) é obrigatório: todo o lote é gravado nele.
+    const referenceMonth = parseReferenceMonth(formData.get("referenceMonth"));
+    if (!referenceMonth) {
+      return { ok: false, error: "Selecione o mês de referência da importação." };
     }
 
     // Validação de tamanho: máx 5 MB
@@ -343,24 +351,9 @@ export async function uploadStatement(formData: FormData): Promise<UploadStateme
       let maxQueryDueDate = maxBatchDate;
 
       if (isCardWithInvoice) {
-        const calculatedDueDates = parseResult.rows
-          .filter((r) => typeof r.date === "string" && r.date.length >= 10)
-          .map(
-            (r) =>
-              cardInvoice({
-                purchaseDate: r.date,
-                closingDay: pm.closingDay!,
-                dueDay: pm.dueDay!,
-              }).dueDate,
-          )
-          .sort();
-
-        if (calculatedDueDates.length > 0) {
-          const minCalc = calculatedDueDates[0];
-          const maxCalc = calculatedDueDates[calculatedDueDates.length - 1];
-          if (minCalc && minCalc < minQueryDueDate) minQueryDueDate = minCalc;
-          if (maxCalc && maxCalc > maxQueryDueDate) maxQueryDueDate = maxCalc;
-        }
+        const refDueDate = dueDateInMonth(referenceMonth, pm.dueDay!);
+        if (refDueDate < minQueryDueDate) minQueryDueDate = refDueDate;
+        if (refDueDate > maxQueryDueDate) maxQueryDueDate = refDueDate;
       }
 
       const candidateExpenses = await db
@@ -464,19 +457,9 @@ export async function uploadStatement(formData: FormData): Promise<UploadStateme
         seenIncomeFingerprints: seenIncomeFpsInBatch,
       });
 
-      const rowInvoice = isCardWithInvoice
-        ? cardInvoice({
-            purchaseDate: row.date,
-            closingDay: pm.closingDay!,
-            dueDay: pm.dueDay!,
-          })
-        : null;
-
-      const rowForMatch = rowInvoice
-        ? {
-            ...row,
-            date: rowInvoice.dueDate,
-          }
+      // Cartão: a despesa será gravada com vencimento no mês de referência escolhido.
+      const rowForMatch = isCardWithInvoice
+        ? { ...row, date: dueDateInMonth(referenceMonth, pm.dueDay!) }
         : row;
 
       const matched = isDuplicateIncomeRow
@@ -554,6 +537,7 @@ export async function uploadStatement(formData: FormData): Promise<UploadStateme
           fileSize: file.size,
           rowCount: preRows.length,
           status: "rascunho",
+          referenceMonth,
           importedBy: sessionMember.member.id,
         })
         .returning({ id: importBatches.id });
@@ -1077,7 +1061,7 @@ export async function confirmBatch(
 
     // Idempotência
     if (batch.status === "confirmado") {
-      const summary = await getBatchSummary(sessionMember.familyId, batch.id);
+      const summary = await getBatchSummary(sessionMember.familyId, batch.id, batch.referenceMonth);
       return { ok: true, batchId: batch.id, targetMonth: computeTargetMonth(summary) };
     }
     if (batch.status === "desfeito") {
@@ -1156,9 +1140,17 @@ export async function confirmBatch(
     }
 
     // Validação de meses fechados
+    // Competência do lote: quando definida, vale para despesas e receitas (sem deslocar para o mês seguinte).
+    const batchReferenceMonth = batch.referenceMonth
+      ? toMonthDate(batch.referenceMonth)
+      : null;
+
     const uniqueMonths = Array.from(
       new Set(
         activeRows.map((r) => {
+          if (batchReferenceMonth) {
+            return toMonthKey(batchReferenceMonth);
+          }
           if (r.type === "despesa" && !r.linkedExpenseId && isCardWithInvoice) {
             const invoice = cardInvoice({
               purchaseDate: r.date,
@@ -1234,7 +1226,7 @@ export async function confirmBatch(
       const processedIncomeFps = new Set<string>();
 
       for (const r of activeRows) {
-        const rowMonthDate = toMonthDate(r.date);
+        const rowMonthDate = batchReferenceMonth ?? toMonthDate(r.date);
         const absAmount = Math.abs(r.amountCents);
 
         if (r.type === "despesa") {
@@ -1280,7 +1272,13 @@ export async function confirmBatch(
             let expenseReferenceMonth = rowMonthDate;
             let expenseDueDate = r.date;
 
-            if (isCardWithInvoice) {
+            if (batchReferenceMonth) {
+              expenseReferenceMonth = batchReferenceMonth;
+              if (isCardWithInvoice) {
+                expenseDueDate = dueDateInMonth(batchReferenceMonth, batchPaymentMethod.dueDay!);
+              }
+            } else if (isCardWithInvoice) {
+              // Lote antigo, sem competência escolhida: mantém a regra de fatura.
               const invoice = cardInvoice({
                 purchaseDate: r.date,
                 closingDay: batchPaymentMethod.closingDay!,
@@ -1451,8 +1449,11 @@ export async function confirmBatch(
         .where(eq(importBatches.id, batch.id));
     });
 
-    const summary = await getBatchSummary(sessionMember.familyId, batch.id);
+    const summary = await getBatchSummary(sessionMember.familyId, batch.id, batch.referenceMonth);
     const targetMonth = computeTargetMonth(summary);
+
+    // Despesas, dashboard (/mes) e histórico precisam refletir o lote sem refresh manual.
+    revalidatePath("/", "layout");
 
     return { ok: true, batchId: batch.id, targetMonth };
   } catch (err: unknown) {
@@ -1566,12 +1567,12 @@ export async function undoBatch(
       ...linkedExpenses.map((e) => toMonthKey(e.referenceMonth)),
       ...rows
         .filter((r) => r.type === "receita" || r.type === "salario")
-        .map((r) => toMonthKey(toMonthDate(r.date))),
+        .map((r) => toMonthKey(batch.referenceMonth ?? toMonthDate(r.date))),
     ]);
 
     if (monthsToCheck.size === 0) {
       for (const r of rows) {
-        monthsToCheck.add(toMonthKey(toMonthDate(r.date)));
+        monthsToCheck.add(toMonthKey(batch.referenceMonth ?? toMonthDate(r.date)));
       }
     }
 
@@ -1656,6 +1657,8 @@ export async function undoBatch(
         })
         .where(eq(importBatches.id, batch.id));
     });
+
+    revalidatePath("/", "layout");
 
     return { ok: true };
   } catch (err: unknown) {

@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+
 vi.mock("@/lib/session", () => ({
   requireMember: vi.fn(),
   requireRole: vi.fn(),
@@ -158,10 +160,25 @@ describe("importar actions", () => {
     it("rejeita chamada sem arquivo", async () => {
       const fd = new FormData();
       fd.append("paymentMethodId", pmId);
+      fd.append("referenceMonth", "2026-11");
       const res = await uploadStatement(fd);
       expect(res.ok).toBe(false);
       if (!res.ok && "error" in res) {
         expect(res.error).toMatch(/não fornecido/);
+      }
+    });
+
+    it("rejeita envio sem mês de referência", async () => {
+      const fd = new FormData();
+      const file = new File(["Data,Valor,Identificador,Descrição\n01/11/2026,-50.00,x,Mercado"], "extrato.csv", {
+        type: "text/csv",
+      });
+      fd.append("file", file);
+      fd.append("paymentMethodId", pmId);
+      const res = await uploadStatement(fd);
+      expect(res.ok).toBe(false);
+      if (!res.ok && "error" in res) {
+        expect(res.error).toMatch(/mês de referência/);
       }
     });
 
@@ -171,6 +188,7 @@ describe("importar actions", () => {
       const file = new File([largeContent], "extrato.csv", { type: "text/csv" });
       fd.append("file", file);
       fd.append("paymentMethodId", pmId);
+      fd.append("referenceMonth", "2026-11");
       fd.append("ownerMemberId", memberId);
 
       const res = await uploadStatement(fd);
@@ -185,6 +203,7 @@ describe("importar actions", () => {
       const emptyFile = new File(["   \n  \n"], "vazio.csv", { type: "text/csv" });
       fd.append("file", emptyFile);
       fd.append("paymentMethodId", pmId);
+      fd.append("referenceMonth", "2026-11");
       fd.append("ownerMemberId", memberId);
 
       mockDb.select.mockReturnValueOnce(
@@ -205,6 +224,7 @@ describe("importar actions", () => {
       });
       fd.append("file", file);
       fd.append("paymentMethodId", "pm-inexistente");
+      fd.append("referenceMonth", "2026-11");
       fd.append("ownerMemberId", memberId);
 
       mockDb.select.mockReturnValueOnce(createDbChain([]));
@@ -223,6 +243,7 @@ describe("importar actions", () => {
       });
       fd.append("file", file);
       fd.append("paymentMethodId", pmId);
+      fd.append("referenceMonth", "2026-11");
       fd.append("ownerMemberId", memberId);
 
       mockDb.select.mockReturnValueOnce(
@@ -243,6 +264,7 @@ describe("importar actions", () => {
       });
       fd.append("file", file);
       fd.append("paymentMethodId", pmId);
+      fd.append("referenceMonth", "2026-11");
       fd.append("ownerMemberId", memberId);
 
       mockDb.select.mockReturnValueOnce(
@@ -263,6 +285,7 @@ describe("importar actions", () => {
       });
       fd.append("file", file);
       fd.append("paymentMethodId", pmId);
+      fd.append("referenceMonth", "2026-11");
       fd.append("ownerMemberId", otherMemberId);
 
       const res = await uploadStatement(fd);
@@ -282,6 +305,7 @@ describe("importar actions", () => {
       const file = new File([nubankCsv], "nubank.csv", { type: "text/csv" });
       fd.append("file", file);
       fd.append("paymentMethodId", pmId);
+      fd.append("referenceMonth", "2026-11");
       fd.append("ownerMemberId", "familia");
 
       // 1. paymentMethods
@@ -312,6 +336,7 @@ describe("importar actions", () => {
       const file = new File([unknownCsv], "desconhecido.csv", { type: "text/csv" });
       fd.append("file", file);
       fd.append("paymentMethodId", pmId);
+      fd.append("referenceMonth", "2026-11");
       fd.append("ownerMemberId", memberId);
 
       // paymentMethod existe
@@ -334,6 +359,7 @@ describe("importar actions", () => {
       const file = new File([nubankCsv], "nubank.csv", { type: "text/csv" });
       fd.append("file", file);
       fd.append("paymentMethodId", pmId);
+      fd.append("referenceMonth", "2026-11");
       fd.append("ownerMemberId", memberId);
 
       // 1. paymentMethod existe
@@ -373,6 +399,7 @@ describe("importar actions", () => {
         });
         fd.append("file", file);
         fd.append("paymentMethodId", pmId);
+        fd.append("referenceMonth", "2026-11");
         fd.append("ownerMemberId", memberId);
 
         mockDb.select.mockReturnValueOnce(
@@ -395,6 +422,7 @@ describe("importar actions", () => {
       });
       fd11.append("file", file11);
       fd11.append("paymentMethodId", pmId);
+      fd11.append("referenceMonth", "2026-11");
       fd11.append("ownerMemberId", memberId);
 
       const res11 = await uploadStatement(fd11);
@@ -411,6 +439,7 @@ describe("importar actions", () => {
       const file = new File([nubankCsv], "nubank.csv", { type: "text/csv" });
       fd.append("file", file);
       fd.append("paymentMethodId", pmId);
+      fd.append("referenceMonth", "2026-11");
       fd.append("ownerMemberId", memberId);
 
       // 1. paymentMethod existe
@@ -478,6 +507,7 @@ describe("importar actions", () => {
       const file = new File([nubankCsv], "nubank.csv", { type: "text/csv" });
       fd.append("file", file);
       fd.append("paymentMethodId", pmId);
+      fd.append("referenceMonth", "2026-11");
       fd.append("ownerMemberId", memberId);
 
       // Despesa manual com vencimento em outubro mas paga no dia 01/11/2026 às 15:00 UTC (12:00 Araguaina)
@@ -543,6 +573,7 @@ describe("importar actions", () => {
       const file = new File([cardCsv], "fatura.csv", { type: "text/csv" });
       fd.append("file", file);
       fd.append("paymentMethodId", cardPmId);
+      fd.append("referenceMonth", "2026-06");
       fd.append("ownerMemberId", memberId);
 
       // 1. paymentMethods: cartão fecha 5, vence 15
@@ -613,6 +644,7 @@ describe("importar actions", () => {
       const file = new File([csv], "extrato.csv", { type: "text/csv" });
       fd.append("file", file);
       fd.append("paymentMethodId", pmId);
+      fd.append("referenceMonth", "2026-11");
       fd.append("ownerMemberId", memberId);
 
       // 1. paymentMethod existe (conta)
@@ -679,6 +711,7 @@ describe("importar actions", () => {
       const file = new File([csv], "extrato.csv", { type: "text/csv" });
       fd.append("file", file);
       fd.append("paymentMethodId", pmId);
+      fd.append("referenceMonth", "2026-11");
       fd.append("ownerMemberId", memberId);
 
       // 1. paymentMethod existe
@@ -1324,6 +1357,105 @@ describe("importar actions", () => {
 
       // Meses checados com assertMonthOpen devem ser 2026-06 e 2026-05
       expect(assertMonthOpen).toHaveBeenCalledWith(famId, "2026-06");
+      expect(assertMonthOpen).toHaveBeenCalledWith(famId, "2026-05");
+    });
+
+    it("com mês de referência escolhido, grava tudo nele (sem empurrar para o mês seguinte) e mantém a data original em paidAt", async () => {
+      const cardPmId = "card-pm-123";
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([
+          {
+            id: batchId,
+            paymentMethodId: cardPmId,
+            status: "rascunho",
+            referenceMonth: "2026-05-01",
+          },
+        ]),
+      );
+
+      const rowsToConfirm = [
+        // Compra no dia 10/05 (fecha dia 5, vence 15 -> fatura de junho: ref 2026-06-01, due 2026-06-15)
+        {
+          id: rowId1,
+          date: "2026-05-10",
+          descriptionOriginal: "Restaurante",
+          amountCents: -12000,
+          type: "despesa",
+          categoryId,
+          ownerMemberId: memberId,
+          paymentMethodId: cardPmId,
+          linkedExpenseId: null,
+          fingerprint: "fp-card-1",
+        },
+        // Compra no dia 03/05 (fecha dia 5, vence 15 -> fatura de maio: ref 2026-05-01, due 2026-05-15)
+        {
+          id: rowId2,
+          date: "2026-05-03",
+          descriptionOriginal: "Café",
+          amountCents: -1500,
+          type: "despesa",
+          categoryId,
+          ownerMemberId: memberId,
+          paymentMethodId: cardPmId,
+          linkedExpenseId: null,
+          fingerprint: "fp-card-2",
+        },
+      ];
+
+      // 1. selectedRows
+      mockDb.select.mockReturnValueOnce(createDbChain(rowsToConfirm));
+      // 2. batchPaymentMethod (cartão com fechamento 5 e vencimento 15)
+      mockDb.select.mockReturnValueOnce(
+        createDbChain([
+          {
+            id: cardPmId,
+            type: "cartao",
+            closingDay: 5,
+            dueDay: 15,
+            archived: false,
+          },
+        ]),
+      );
+
+      const insertedExpenses: Array<Record<string, unknown>> = [];
+      mockDb.insert.mockImplementation(() => {
+        const chain = createDbChain([{ id: "new-exp-id" }]);
+        chain.values = vi.fn((val: unknown) => {
+          if (typeof val === "object" && val !== null) {
+            insertedExpenses.push(val as Record<string, unknown>);
+          }
+          return chain;
+        });
+        return chain;
+      });
+
+      const res = await confirmBatch(batchId);
+      expect(res.ok).toBe(true);
+
+      // Confirma que foram criadas 2 despesas com a regra de fatura aplicada
+      expect(insertedExpenses).toHaveLength(2);
+
+      // Primeira despesa (compra 10/05): referenceMonth 2026-06-01, dueDate 2026-06-15, paymentMethodId = batch.paymentMethodId
+      expect(insertedExpenses[0]).toMatchObject({
+        referenceMonth: "2026-05-01",
+        dueDate: "2026-05-15",
+        paidAt: new Date("2026-05-10T12:00:00Z"),
+        paymentMethodId: cardPmId,
+        amountCents: 12000,
+        status: "pago",
+      });
+
+      // Segunda despesa (compra 03/05): referenceMonth 2026-05-01, dueDate 2026-05-15, paymentMethodId = batch.paymentMethodId
+      expect(insertedExpenses[1]).toMatchObject({
+        referenceMonth: "2026-05-01",
+        dueDate: "2026-05-15",
+        paymentMethodId: cardPmId,
+        amountCents: 1500,
+        status: "pago",
+      });
+
+      // Só o mês de referência escolhido é verificado/gravado
+      expect(assertMonthOpen).toHaveBeenCalledTimes(1);
       expect(assertMonthOpen).toHaveBeenCalledWith(famId, "2026-05");
     });
 

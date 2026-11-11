@@ -20,5 +20,6 @@
 | Redirecionamento pós-importação | Após confirmar importação, abrir `/despesas?mes=YYYY-MM&lote=<id>` no mês com mais despesas criadas, com aviso de quantas despesas, outros meses e receitas enviadas para a renda em `/mes`. | Jefferson (revisão de importação) |
 | Barra fixa na revisão mobile | Na revisão da importação no celular (`/importar/[id]`), o botão "Continuar para confirmação" fica numa barra fixa no rodapé (sai do topo no celular), com contador e motivo visível quando desabilitado. | Jefferson (revisão de importação) |
 | Mês de receita importada | Bug corrigido: receita importada gravava mês com dia diferente de 1; o mês de referência de receita (`monthly_periods.month`) deve ser estritamente o primeiro dia do mês (`YYYY-MM-01`). | Jefferson (correção de importação) |
+| Mês de referência da importação | Bug corrigido: a regra de fechamento de fatura empurrava compras de cartão para o mês seguinte. O envio do extrato agora exige **Mês/Ano de referência** (padrão: mês atual); todo o lote (despesas e receitas) é gravado nessa competência, e a data original fica em `paid_at`/`import_rows.date`. Lotes antigos (sem `reference_month`) mantêm a regra de fatura. | Jefferson (auditoria de importação) — **pendente de aprovação do contrato `docs/interfaces/09`** |
 
 Premissas marcadas "confirmar" valem até o Jefferson dizer o contrário.
