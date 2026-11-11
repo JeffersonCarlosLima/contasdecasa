@@ -25,3 +25,5 @@ export const pool = new Proxy(Object.create(Pool.prototype) as Pool, {
 
 export const db = drizzle(pool, { schema });
 export type Db = typeof db;
+/** Transação do Drizzle (parâmetro `tx` de `db.transaction`). */
+export type DbTransaction = Parameters<Parameters<Db["transaction"]>[0]>[0];

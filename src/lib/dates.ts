@@ -48,5 +48,12 @@ export function parseMonthParam(value: string | undefined): string {
   return value && /^\d{4}-(0[1-9]|1[0-2])$/.test(value) ? value : currentMonth();
 }
 
-/** "2026-11-10" → "10/11" */
-export const shortDate = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+/**
+ * "2026-11-10" → "10/11". Aceita também `Date` (ex.: `paid_at`, timestamp),
+ * convertido para o dia no fuso da família. Antes, `String(date)` produzia
+ * "Thu Nov 05 2026…" e a tela mostrava "05/ov".
+ */
+export const shortDate = (value: string | Date) => {
+  const iso = value instanceof Date ? todayISO(value) : value;
+  return `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+};

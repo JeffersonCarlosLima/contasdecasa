@@ -1,3 +1,4 @@
+import type { DbTransaction } from "@/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
@@ -80,7 +81,7 @@ describe("joinFamilyFromInvite", () => {
       }),
     };
 
-    await joinFamilyFromInvite(mockTx, mockUser, mockInvite);
+    await joinFamilyFromInvite(mockTx as unknown as DbTransaction, mockUser, mockInvite);
 
     // Deve inserir com person-b (já que person-a existe)
     expect(mockTx.insert).toHaveBeenCalled();
@@ -123,7 +124,7 @@ describe("joinFamilyFromInvite", () => {
       }),
     };
 
-    await joinFamilyFromInvite(mockTx, mockUser, mockInvite);
+    await joinFamilyFromInvite(mockTx as unknown as DbTransaction, mockUser, mockInvite);
 
     expect(mockTx.insert).not.toHaveBeenCalled();
     expect(mockTx.update).toHaveBeenCalledTimes(2); // 1 para membro, 1 para convite

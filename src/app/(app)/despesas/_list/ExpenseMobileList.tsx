@@ -51,7 +51,7 @@ export function ExpenseMobileList({
 
     if (item.status === "pago") {
       const payer = item.paidBy?.displayName ?? "alguém";
-      const dateStr = item.paidAt ? shortDate(String(item.paidAt)) : "";
+      const dateStr = item.paidAt ? shortDate(item.paidAt) : "";
       parts.push(`pago por ${payer}${dateStr ? ` · ${dateStr}` : ""}`);
     } else if (item.status === "atrasado") {
       parts.push(`venceu ${shortDate(item.dueDate)}`);

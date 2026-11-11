@@ -113,7 +113,7 @@ export function ExpenseTable({
                       ) : item.paidAt ? (
                         <div className="caption cc-muted">
                           Pago por {item.paidBy?.displayName ?? "alguém"} em{" "}
-                          {shortDate(String(item.paidAt))}
+                          {shortDate(item.paidAt)}
                         </div>
                       ) : null}
                     </td>
@@ -259,7 +259,7 @@ export function ExpenseTable({
                           ) : item.paidAt ? (
                             <div className="caption cc-muted">
                               Pago por {item.paidBy?.displayName ?? "alguém"} em{" "}
-                              {shortDate(String(item.paidAt))}
+                              {shortDate(item.paidAt)}
                             </div>
                           ) : null}
                         </td>
