@@ -7,7 +7,12 @@ export interface LayoutDefinition {
   config: MappingConfig;
   preambleLines?: number;
   stopOnFirstEmptyLine?: boolean;
+  /** Interrompe a leitura quando a 1ª célula preenchida da linha começa com um destes textos (sem acento). */
   stopPatterns?: string[];
+  /** Ignora a linha (sem aviso) quando a descrição começa com um destes textos. */
+  skipPatterns?: string[];
+  /** Outros nomes aceitos para uma coluna do cabeçalho (ex.: "Dcto." para "Docto."). */
+  columnAliases?: Record<string, string[]>;
   validateBalance?: boolean;
   balanceColumn?: string;
   invertAmount?: boolean;
@@ -18,14 +23,25 @@ export const BRADESCO_CONTA_LAYOUT: LayoutDefinition = {
   id: "bradesco-conta",
   name: "Bradesco Conta Corrente",
   status: "a validar",
-  preambleLines: 1, // 1 linha de preâmbulo (ex: agência/conta - nunca salva)
-  stopOnFirstEmptyLine: true, // termina na 1ª linha em branco
-  stopPatterns: ["LANÇAMENTOS PERIÓDICOS", "LANCAMENTOS PERIODICOS", "TOTAL", "SALDO ANTERIOR"],
+  preambleLines: 1, // 1 linha de preâmbulo (ex.: "Extrato de: Ag: ... | Conta: ...;;;;;"), nunca salva; o cabeçalho é detectado
+  stopOnFirstEmptyLine: true, // termina na 1ª linha em branco (inclusive ";;;;;") depois dos lançamentos
+  stopPatterns: [
+    "Os dados acima",
+    "Lançamentos periódicos",
+    "Lançamentos futuros",
+    "Não há lançamentos",
+    "Total",
+  ],
+  skipPatterns: ["SALDO ANTERIOR"],
+  columnAliases: {
+    "Histórico": ["Lançamento", "Descrição"],
+    "Docto.": ["Dcto.", "Documento"],
+  },
   validateBalance: true,
   balanceColumn: "Saldo (R$)",
   config: {
     separator: ";",
-    headerSignature: ["Data", "Histórico", "Docto.", "Crédito (R$)", "Débito (R$)", "Saldo (R$)"],
+    headerSignature: ["Data", "Histórico", "Crédito (R$)", "Débito (R$)", "Saldo (R$)"],
     dateColumn: "Data",
     dateFormat: "dd/mm/yy", // Bradesco comumente usa DD/MM/YY ou DD/MM/YYYY
     descriptionColumns: ["Histórico"],

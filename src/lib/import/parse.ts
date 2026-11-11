@@ -161,14 +161,40 @@ function normalizeHeader(h: string): string {
     .replace(/[^a-z0-9]/g, "");
 }
 
-function matchesSignature(tokens: string[], signature: string[]): boolean {
-  if (tokens.length < signature.length) return false;
-  const normTokens = tokens.map(normalizeHeader);
-  const normSig = signature.map(normalizeHeader);
+/** Nomes aceitos para uma coluna: o próprio nome e os apelidos do layout, normalizados. */
+function columnNames(colName: string, aliases?: Record<string, string[]>): string[] {
+  return [colName, ...(aliases?.[colName] ?? [])].map(normalizeHeader).filter((n) => n !== "");
+}
 
-  return normSig.every((sigCol) =>
-    normTokens.some((tokenCol) => tokenCol.includes(sigCol) || sigCol.includes(tokenCol))
-  );
+/** Compara nomes de coluna normalizados. Células vazias nunca casam com nada. */
+function headerMatches(token: string, name: string): boolean {
+  if (!token || !name) return false;
+  if (token === name) return true;
+  return token.includes(name) || (token.length >= 3 && name.includes(token));
+}
+
+function matchesSignature(
+  tokens: string[],
+  signature: string[],
+  aliases?: Record<string, string[]>
+): boolean {
+  const normTokens = tokens.map(normalizeHeader).filter((t) => t !== "");
+  if (normTokens.length < signature.length) return false;
+
+  return signature.every((sigCol) => {
+    const names = columnNames(sigCol, aliases);
+    return names.length > 0 && normTokens.some((tok) => names.some((n) => headerMatches(tok, n)));
+  });
+}
+
+/** Texto da célula sem acentos, em maiúsculas e com espaços colapsados. */
+function normalizeCell(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function detectLayout(lines: string[]): {
@@ -186,7 +212,10 @@ function detectLayout(lines: string[]): {
       if (tokens.length < 2) continue;
 
       for (const layoutDef of PREDEFINED_LAYOUTS) {
-        if (matchesSignature(tokens, layoutDef.config.headerSignature)) {
+        if (
+          sep === layoutDef.config.separator &&
+          matchesSignature(tokens, layoutDef.config.headerSignature, layoutDef.columnAliases)
+        ) {
           return { layoutDef, headerIndex: lineIdx };
         }
       }
@@ -288,21 +317,22 @@ function parseWithLayoutDefinition(
   const headerLine = lines[headerIndex] ?? "";
   const headerTokens = tokenizeCsvLine(headerLine, config.separator);
 
-  const colIndexMap = new Map<string, number>();
-  headerTokens.forEach((token, idx) => {
-    colIndexMap.set(normalizeHeader(token), idx);
-  });
+  const normHeaders = headerTokens.map(normalizeHeader);
 
+  // Procura primeiro o nome exato (ou apelido exato) e só depois por trecho do nome,
+  // ignorando células vazias do cabeçalho (ex.: "Saldo (R$);" com ";" sobrando no fim).
   const getColIdx = (colName?: string) => {
     if (!colName) return -1;
-    const norm = normalizeHeader(colName);
-    let found = -1;
-    colIndexMap.forEach((idx, key) => {
-      if (found === -1 && (key.includes(norm) || norm.includes(key))) {
-        found = idx;
-      }
-    });
-    return found;
+    const names = columnNames(colName, layoutDef.columnAliases);
+    for (const name of names) {
+      const exact = normHeaders.indexOf(name);
+      if (exact !== -1) return exact;
+    }
+    for (const name of names) {
+      const partial = normHeaders.findIndex((h) => headerMatches(h, name));
+      if (partial !== -1) return partial;
+    }
+    return -1;
   };
 
   const dateIdx = getColIdx(config.dateColumn);
@@ -328,20 +358,20 @@ function parseWithLayoutDefinition(
     if (line === undefined) continue;
     const trimmed = line.trim();
 
-    // Condições de parada
-    if (layoutDef.stopOnFirstEmptyLine && trimmed === "") {
-      break;
-    }
-    if (!trimmed) {
+    const tokens = tokenizeCsvLine(line, config.separator);
+    const isBlankRow = trimmed === "" || tokens.every((t) => t === "");
+
+    // Condições de parada: linha em branco (inclusive ";;;;;") e rodapés conhecidos
+    if (isBlankRow) {
+      if (layoutDef.stopOnFirstEmptyLine && rows.length > 0) break;
       continue;
     }
 
-    const upperTrimmed = trimmed.toUpperCase();
-    if (layoutDef.stopPatterns?.some((p) => upperTrimmed.includes(p))) {
+    const firstCell = normalizeCell(tokens.find((t) => t !== "") ?? "");
+    if (layoutDef.stopPatterns?.some((p) => firstCell.startsWith(normalizeCell(p)))) {
       break;
     }
 
-    const tokens = tokenizeCsvLine(line, config.separator);
     if (tokens.length < 2) {
       continue;
     }
@@ -376,6 +406,16 @@ function parseWithLayoutDefinition(
     }
     const descriptionOriginal = descParts.join(" - ") || "Sem descrição";
     const descriptionNormalized = normalizeDescription(descriptionOriginal);
+
+    // Linhas informativas (ex.: "SALDO ANTERIOR"): não são lançamentos, mas o saldo
+    // delas serve de ponto de partida para a validação de saldo.
+    if (layoutDef.skipPatterns?.some((p) => descriptionNormalized.startsWith(normalizeCell(p)))) {
+      if (layoutDef.validateBalance && balanceIdx !== -1 && tokens[balanceIdx] !== undefined) {
+        const skippedBalance = parseCents(tokens[balanceIdx]!, config.decimal);
+        if (skippedBalance !== null) previousBalanceCents = skippedBalance;
+      }
+      continue;
+    }
 
     // 3. Valor
     let amountCents: number | null = null;
