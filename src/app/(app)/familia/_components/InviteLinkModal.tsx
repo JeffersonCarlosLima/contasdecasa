@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Modal } from "./Modal";
 import { Button } from "@/components/ui/Button";
 import { buildWhatsAppInviteUrl } from "./helpers";
@@ -19,6 +19,13 @@ export function InviteLinkModal({
   onClose,
 }: InviteLinkModalProps) {
   const [copied, setCopied] = useState(false);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copiedTimer.current) clearTimeout(copiedTimer.current);
+    };
+  }, []);
 
   const handleCopy = async () => {
     try {
@@ -33,7 +40,8 @@ export function InviteLinkModal({
         document.body.removeChild(textarea);
       }
       setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
+      if (copiedTimer.current) clearTimeout(copiedTimer.current);
+      copiedTimer.current = setTimeout(() => setCopied(false), 2500);
     } catch {
       // Fallback
       setCopied(false);

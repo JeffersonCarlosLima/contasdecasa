@@ -28,8 +28,8 @@ export function ExpenseRow({
       <div className="cc-expense__side">
         <span className="cc-expense__value cc-num">{formatBRL(cents)}</span>
         <StatusBadge status={status} />
-        {action}
       </div>
+      {action && <div className="cc-expense__action">{action}</div>}
     </div>
   );
 }

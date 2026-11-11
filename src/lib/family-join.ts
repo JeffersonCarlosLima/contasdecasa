@@ -1,5 +1,6 @@
 import "server-only";
 import { and, eq, ne } from "drizzle-orm";
+import type { DbTransaction } from "@/db";
 import { familyInvites, familyMembers } from "@/db/schema";
 
 export const PERSON_COLORS = ["person-a", "person-b", "person-c", "person-d"] as const;
@@ -29,8 +30,7 @@ interface InviteLike {
   participatesInSplit: boolean;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function joinFamilyFromInvite(tx: any, user: UserLike, invite: InviteLike) {
+export async function joinFamilyFromInvite(tx: DbTransaction, user: UserLike, invite: InviteLike) {
   // 1. Descobrir cores já em uso por membros não removidos da família
   const existingMembers = await tx
     .select({ color: familyMembers.color })
