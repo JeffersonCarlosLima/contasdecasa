@@ -65,5 +65,5 @@ Itens de negócio e refinamento arquitetural a deliberar com o Jefferson:
 6. **Política de Expiração de Rascunhos:** Confirmar a janela de retenção de lotes abandonados em status de `rascunho` antes da limpeza periódica automática (atualmente fixada em 30 dias).
 
 ### 3. Extratos Reais Anonimizados para Testes de Regressão
-- Atualmente o diretório `tests/fixtures/import/` conta com extratos sintéticos padronizados (`bradesco-conta.csv`, `inter-conta.csv`, `nubank-cartao.csv`, `nubank-conta.csv`).
+- Atualmente o diretório `tests/fixtures/import/` conta com extratos sintéticos padronizados (`bradesco-conta.csv`, `inter-conta.csv`, `nubank-cartao.csv`, `nubank-conta.csv`) e com um extrato real anonimizado da conta Bradesco (`bradesco-conta-2026.csv`: linha "Extrato de: Ag | Conta" antes do cabeçalho, BOM, célula vazia como espaço e rodapés).
 - **Pendente:** Coletar e commitar extratos reais anonimizados de contas e faturas de cartão do Banco Inter e do Banco Bradesco para garantir cobertura contra variações reais de formatação, pontuação, acentuação e metadados nos cabeçalhos desses bancos.
