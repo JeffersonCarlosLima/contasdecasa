@@ -88,6 +88,8 @@ export const importRows = pgTable(
     date: date("date", { mode: "string" }).notNull(),
     descriptionOriginal: text("description_original").notNull(),
     descriptionNormalized: text("description_normalized").notNull(),
+    /** Descrição ajustada na revisão (ou por regra de nome); nulo = usa a original. */
+    descriptionEdited: text("description_edited"),
     /** Centavos com sinal: negativo = saída/despesa, positivo = entrada/receita. */
     amountCents: cents("amount_cents").notNull(),
     type: importRowType("type").notNull().default("despesa"),
@@ -124,6 +126,8 @@ export const importRules = pgTable(
       .references(() => families.id, { onDelete: "cascade" }),
     matchType: importRuleMatchType("match_type").notNull().default("contem"),
     pattern: text("pattern").notNull(),
+    /** Nome a gravar na despesa quando a regra casa; nulo = mantém a descrição do extrato. */
+    displayName: text("display_name"),
     categoryId: uuid("category_id")
       .notNull()
       .references(() => categories.id, { onDelete: "cascade" }),

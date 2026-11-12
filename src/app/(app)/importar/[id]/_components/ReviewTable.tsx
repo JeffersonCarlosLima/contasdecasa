@@ -3,6 +3,7 @@
 import { shortDate } from "@/lib/dates";
 import { formatBRL } from "@/lib/money";
 import { formatSignedAmount, isRowSelectable } from "./helpers";
+import { DescriptionCell } from "./DescriptionCell";
 import { SituationBadge } from "./SituationBadge";
 import type { CategoryOption, ImportRowReviewItem, MemberOption } from "./types";
 
@@ -18,6 +19,7 @@ export interface ReviewTableProps {
   onLinkExpense: (rowId: string, expenseId: string | null) => void;
   onClearTransfer: (rowId: string) => void;
   onOpenRuleModal: (row: ImportRowReviewItem) => void;
+  onUpdateRowDescription: (rowId: string, description: string | null) => void;
   categories: CategoryOption[];
   members: MemberOption[];
   isPending: boolean;
@@ -35,6 +37,7 @@ export function ReviewTable({
   onLinkExpense,
   onClearTransfer,
   onOpenRuleModal,
+  onUpdateRowDescription,
   categories,
   members,
   isPending,
@@ -138,7 +141,7 @@ export function ReviewTable({
 
                 {/* 3. Descrição (estritamente como texto) */}
                 <td>
-                  <span style={{ fontWeight: 600 }}>{row.descriptionOriginal}</span>
+<DescriptionCell row={row} disabled={isPending} onChange={onUpdateRowDescription} />
                   {!isSelectable && (
                     <div
                       id={`table-ignore-reason-${row.id}`}

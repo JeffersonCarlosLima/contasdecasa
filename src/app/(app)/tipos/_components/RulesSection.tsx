@@ -14,6 +14,7 @@ export interface RuleItem {
   id: string;
   matchType: MatchType;
   pattern: string;
+  displayName?: string | null;
   categoryId?: string;
   category?: { id: string; name: string; color: string } | null;
   ownerMemberId?: string | null;
@@ -27,6 +28,7 @@ export interface SaveRuleInput {
   id?: string;
   matchType: MatchType;
   pattern: string;
+  displayName?: string | null;
   categoryId: string;
   ownerId?: string | null;
   paymentMethodId?: string | null;
@@ -87,6 +89,7 @@ export function RulesSection({
   const [editingRule, setEditingRule] = useState<RuleItem | null>(null);
   const [matchType, setMatchType] = useState<MatchType>("contem");
   const [pattern, setPattern] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [categoryId, setCategoryId] = useState(categories[0]?.id ?? "");
   const [ownerMemberId, setOwnerMemberId] = useState<string>("");
   const [paymentMethodId, setPaymentMethodId] = useState<string>("");
@@ -112,6 +115,7 @@ export function RulesSection({
     setEditingRule(null);
     setMatchType("contem");
     setPattern("");
+    setDisplayName("");
     setCategoryId(categories[0]?.id ?? "");
     setOwnerMemberId("");
     setPaymentMethodId("");
@@ -123,6 +127,7 @@ export function RulesSection({
     setEditingRule(rule);
     setMatchType(rule.matchType);
     setPattern(rule.pattern);
+    setDisplayName(rule.displayName ?? "");
     setCategoryId(rule.category?.id ?? rule.categoryId ?? categories[0]?.id ?? "");
     setOwnerMemberId(rule.ownerMember?.id ?? rule.ownerMemberId ?? "");
     setPaymentMethodId(rule.paymentMethod?.id ?? rule.paymentMethodId ?? "");
@@ -147,6 +152,7 @@ export function RulesSection({
       id: editingRule?.id,
       matchType,
       pattern: pattern.trim(),
+      displayName: displayName.trim() ? displayName.trim() : null,
       categoryId,
       ownerId: ownerMemberId ? ownerMemberId : null,
       paymentMethodId: paymentMethodId ? paymentMethodId : null,
@@ -262,6 +268,7 @@ export function RulesSection({
                   <div className="cc-expense__main">
                     <span className="cc-expense__title">
                       {rule.pattern}
+                      {rule.displayName ? <> → {rule.displayName}</> : null}
                     </span>
                     <span className="cc-expense__meta">
                       <span>{matchLabel}</span>
@@ -351,6 +358,20 @@ export function RulesSection({
                   onChange={(e) => setPattern(e.target.value)}
                   placeholder="Ex.: UBER, POSTO, NETFLIX..."
                   required
+                  disabled={isPending}
+                />
+              </span>
+            </label>
+
+            <label className="cc-field">
+              <span className="cc-field__label">Nome a usar na despesa (opcional)</span>
+              <span className="cc-input">
+                <input
+                  className="cc-input__text"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Ex.: Mercado do bairro"
+                  maxLength={120}
                   disabled={isPending}
                 />
               </span>

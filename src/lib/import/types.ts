@@ -49,6 +49,8 @@ export type MatchType = "contem" | "comeca";
 export interface ClassificationRule {
   matchType: MatchType;
   pattern: string;
+  /** Nome a gravar na despesa quando a regra casa. */
+  displayName?: string | null;
   categoryId: string;
   ownerId?: string | null;
   paymentMethodId?: string | null;

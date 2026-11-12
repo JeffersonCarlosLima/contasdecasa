@@ -843,6 +843,47 @@ describe("importar actions", () => {
     });
   });
 
+  describe("updateRows: descrição editada", () => {
+    it("grava a descrição ajustada da linha", async () => {
+      mockDb.select.mockReturnValueOnce(createDbChain([{ status: "rascunho" }]));
+      const chain = createDbChain([]);
+      mockDb.update.mockReturnValueOnce(chain);
+
+      const res = await updateRows({
+        batchId,
+        rowIds: [rowId1],
+        patch: { description: "  Conta de luz  " },
+      });
+
+      expect(res.ok).toBe(true);
+      expect(chain.set).toHaveBeenCalledWith(
+        expect.objectContaining({ descriptionEdited: "Conta de luz" }),
+      );
+    });
+
+    it("descrição vazia volta para a original do extrato", async () => {
+      mockDb.select.mockReturnValueOnce(createDbChain([{ status: "rascunho" }]));
+      const chain = createDbChain([]);
+      mockDb.update.mockReturnValueOnce(chain);
+
+      const res = await updateRows({ batchId, rowIds: [rowId1], patch: { description: "   " } });
+
+      expect(res.ok).toBe(true);
+      expect(chain.set).toHaveBeenCalledWith(
+        expect.objectContaining({ descriptionEdited: null }),
+      );
+    });
+
+    it("rejeita descrição com mais de 120 caracteres", async () => {
+      const res = await updateRows({
+        batchId,
+        rowIds: [rowId1],
+        patch: { description: "x".repeat(121) },
+      });
+      expect(res.ok).toBe(false);
+    });
+  });
+
   describe("setRowLink", () => {
     it("vincula linha a despesa pendente", async () => {
       mockDb.select.mockReturnValueOnce(createDbChain([{ status: "rascunho" }]));
@@ -972,6 +1013,23 @@ describe("importar actions", () => {
       if (res.ok) {
         expect(res.ruleId).toBe(ruleId);
       }
+    });
+
+    it("salva o nome a usar na despesa junto da regra", async () => {
+      const chain = createDbChain([{ id: ruleId }]);
+      mockDb.insert.mockReturnValueOnce(chain);
+
+      const res = await saveRule({
+        matchType: "contem",
+        pattern: "PAGTO ELETRON COBRANCA",
+        displayName: " Conta de luz ",
+        categoryId,
+      });
+
+      expect(res.ok).toBe(true);
+      expect(chain.values).toHaveBeenCalledWith(
+        expect.objectContaining({ displayName: "Conta de luz" }),
+      );
     });
 
     it("exclui regra como admin", async () => {

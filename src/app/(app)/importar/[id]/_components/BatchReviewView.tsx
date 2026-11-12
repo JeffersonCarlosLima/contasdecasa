@@ -214,6 +214,29 @@ export function BatchReviewView({
     });
   }
 
+  function handleUpdateRowDescription(rowId: string, description: string | null) {
+    setRows((prev) =>
+      prev.map((r) => (r.id === rowId ? { ...r, descriptionEdited: description } : r))
+    );
+
+    startTransition(async () => {
+      try {
+        const res = await updateRows({
+          batchId: batch.id,
+          rowIds: [rowId],
+          patch: { description },
+        });
+        if (!res.ok) setServerError(sanitizeErrorMessage(res.error));
+      } catch (err) {
+        setServerError(
+          sanitizeErrorMessage(
+            err instanceof Error ? err.message : "Erro ao atualizar descrição."
+          )
+        );
+      }
+    });
+  }
+
   function handleUpdateRowType(
     rowId: string,
     type: "despesa" | "receita" | "salario" | "ignorar"
@@ -487,6 +510,7 @@ export function BatchReviewView({
     rowId: string;
     matchType: "contem" | "comeca";
     pattern: string;
+    displayName?: string | null;
     categoryId: string;
     ownerId?: string | null;
   }) {
@@ -495,6 +519,7 @@ export function BatchReviewView({
       rowId: params.rowId,
       matchType: params.matchType,
       pattern: params.pattern,
+      displayName: params.displayName,
       categoryId: params.categoryId,
       ownerId: params.ownerId,
       paymentMethodId: batch.paymentMethod.id,
@@ -754,6 +779,7 @@ export function BatchReviewView({
         onLinkExpense={handleLinkExpense}
         onClearTransfer={handleClearTransfer}
         onOpenRuleModal={(r) => setRuleModalRow(r)}
+        onUpdateRowDescription={handleUpdateRowDescription}
         categories={categories}
         members={members}
         isPending={isPending}
@@ -770,6 +796,7 @@ export function BatchReviewView({
         onLinkExpense={handleLinkExpense}
         onClearTransfer={handleClearTransfer}
         onOpenRuleModal={(r) => setRuleModalRow(r)}
+        onUpdateRowDescription={handleUpdateRowDescription}
         categories={categories}
         members={members}
         isPending={isPending}
