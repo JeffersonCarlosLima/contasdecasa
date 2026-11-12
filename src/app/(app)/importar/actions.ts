@@ -413,6 +413,7 @@ export async function uploadStatement(formData: FormData): Promise<UploadStateme
       date: string;
       descriptionOriginal: string;
       descriptionNormalized: string;
+      descriptionEdited: string | null;
       amountCents: number;
       type: "despesa" | "receita" | "salario" | "ignorar";
       ignoreReason: string | null;
@@ -485,6 +486,7 @@ export async function uploadStatement(formData: FormData): Promise<UploadStateme
         date: row.date,
         descriptionOriginal: row.descriptionOriginal,
         descriptionNormalized: descNorm,
+        descriptionEdited: ruleApplied?.displayName ?? null,
         amountCents: row.amountCents,
         type,
         ignoreReason,
@@ -557,6 +559,7 @@ export async function uploadStatement(formData: FormData): Promise<UploadStateme
             date: r.date,
             descriptionOriginal: r.descriptionOriginal,
             descriptionNormalized: r.descriptionNormalized,
+            descriptionEdited: r.descriptionEdited,
             amountCents: r.amountCents,
             type: r.type,
             ignoreReason: r.ignoreReason,
@@ -693,6 +696,10 @@ export async function updateRows(
     if (patch.categoryId !== undefined) updateSet.categoryId = patch.categoryId;
     if (patch.ownerId !== undefined) updateSet.ownerMemberId = patch.ownerId;
     if (patch.selected !== undefined) updateSet.selected = patch.selected;
+    if (patch.description !== undefined) {
+      // Vazio = volta para a descrição original do extrato
+      updateSet.descriptionEdited = patch.description?.trim() ? patch.description.trim() : null;
+    }
 
     await db
       .update(importRows)
@@ -893,6 +900,7 @@ export async function createRuleFromRow(
         matchType: parsed.data.matchType,
         pattern: parsed.data.pattern,
         categoryId: parsed.data.categoryId,
+        displayName: parsed.data.displayName?.trim() || null,
         ownerMemberId: parsed.data.ownerId ?? null,
         paymentMethodId: parsed.data.paymentMethodId ?? null,
         priority: 0,
@@ -943,6 +951,7 @@ export async function saveRule(
           matchType: data.matchType,
           pattern: data.pattern,
           categoryId: data.categoryId,
+          displayName: data.displayName?.trim() || null,
           ownerMemberId: data.ownerMemberId ?? null,
           paymentMethodId: data.paymentMethodId ?? null,
           priority: data.priority,
@@ -969,6 +978,7 @@ export async function saveRule(
         matchType: data.matchType,
         pattern: data.pattern,
         categoryId: data.categoryId,
+        displayName: data.displayName?.trim() || null,
         ownerMemberId: data.ownerMemberId ?? null,
         paymentMethodId: data.paymentMethodId ?? null,
         priority: data.priority,
@@ -1293,7 +1303,7 @@ export async function confirmBatch(
               .values({
                 familyId: sessionMember.familyId,
                 referenceMonth: expenseReferenceMonth,
-                description: r.descriptionOriginal,
+                description: r.descriptionEdited?.trim() || r.descriptionOriginal,
                 amountCents: absAmount,
                 categoryId: r.categoryId!,
                 ownerMemberId: r.ownerMemberId,

@@ -18,6 +18,7 @@ function mockRow(overrides: Partial<ImportRowReviewItem>): ImportRowReviewItem {
     date: overrides.date ?? "2026-11-01",
     descriptionOriginal: overrides.descriptionOriginal ?? "Supermercado XYZ",
     descriptionNormalized: overrides.descriptionNormalized ?? "supermercado xyz",
+    descriptionEdited: overrides.descriptionEdited ?? null,
     amountCents: overrides.amountCents ?? -15000,
     type: overrides.type ?? "despesa",
     ignoreReason: overrides.ignoreReason ?? null,

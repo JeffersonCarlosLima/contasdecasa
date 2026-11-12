@@ -17,6 +17,7 @@ export interface RuleModalProps {
     rowId: string;
     matchType: "contem" | "comeca";
     pattern: string;
+    displayName?: string | null;
     categoryId: string;
     ownerId?: string | null;
   }) => Promise<void>;
@@ -35,12 +36,14 @@ export function RuleModal({
   const titleId = useId();
   const patternId = useId();
   const matchTypeId = useId();
+  const displayNameId = useId();
   const categoryId = useId();
   const ownerId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 
   const [pattern, setPattern] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [matchType, setMatchType] = useState<"contem" | "comeca">("contem");
   const [selectedCatId, setSelectedCatId] = useState("");
   const [selectedOwnerId, setSelectedOwnerId] = useState<string | null>(null);
@@ -49,6 +52,7 @@ export function RuleModal({
   useEffect(() => {
     if (row) {
       setPattern(row.descriptionNormalized || row.descriptionOriginal);
+      setDisplayName(row.descriptionEdited ?? "");
       setMatchType("contem");
       setSelectedCatId(row.categoryId || categories[0]?.id || "");
       setSelectedOwnerId(row.ownerMemberId || null);
@@ -125,6 +129,7 @@ export function RuleModal({
         rowId: row!.id,
         matchType,
         pattern: pattern.trim(),
+        displayName: displayName.trim() ? displayName.trim() : null,
         categoryId: selectedCatId,
         ownerId: selectedOwnerId,
       });
@@ -173,7 +178,7 @@ export function RuleModal({
             Lembrar para descrições parecidas
           </h2>
           <p className="body cc-muted" style={{ margin: 0 }}>
-            Lançamentos futuros que corresponderem ao padrão abaixo receberão automaticamente esta categoria.
+            Lançamentos futuros que corresponderem ao padrão abaixo receberão automaticamente esta categoria e, se preenchido, o nome que você definiu.
           </p>
         </div>
 
@@ -194,6 +199,21 @@ export function RuleModal({
                 onChange={(e) => setPattern(e.target.value)}
                 disabled={isPending}
                 placeholder="Ex.: supermercado"
+              />
+            </span>
+          </label>
+
+          <label className="cc-field" htmlFor={displayNameId}>
+            <span className="cc-field__label">Nome a usar na despesa (opcional)</span>
+            <span className="cc-input">
+              <input
+                id={displayNameId}
+                className="cc-input__text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                disabled={isPending}
+                maxLength={120}
+                placeholder="Ex.: Mercado do bairro"
               />
             </span>
           </label>

@@ -1,5 +1,14 @@
 import { z } from "zod";
 
+export const MAX_DESCRIPTION_LENGTH = 120;
+
+const displayNameField = z
+  .string()
+  .trim()
+  .max(MAX_DESCRIPTION_LENGTH, "Nome muito longo")
+  .nullable()
+  .optional();
+
 export const saveMappingSchema = z.object({
   name: z
     .string({ message: "Nome do mapeamento é obrigatório" })
@@ -34,6 +43,13 @@ export const updateRowsSchema = z.object({
     categoryId: z.string().uuid("ID de categoria inválido").nullable().optional(),
     ownerId: z.string().uuid("ID de membro inválido").nullable().optional(),
     selected: z.boolean().optional(),
+    /** Descrição final do lançamento; nulo/vazio volta para a descrição do extrato. */
+    description: z
+      .string()
+      .trim()
+      .max(MAX_DESCRIPTION_LENGTH, "Descrição muito longa")
+      .nullable()
+      .optional(),
   }),
 });
 
@@ -53,6 +69,7 @@ export const createRuleFromRowSchema = z.object({
     .min(1, "Padrão de texto não pode ser vazio")
     .max(200, "Padrão muito longo"),
   categoryId: z.string().uuid("Categoria é obrigatória"),
+  displayName: displayNameField,
   ownerId: z.string().uuid("ID de membro inválido").nullable().optional(),
   paymentMethodId: z.string().uuid("ID de forma de pagamento inválido").nullable().optional(),
 });
@@ -68,6 +85,7 @@ export const saveRuleSchema = z.object({
     .min(1, "Padrão não pode ser vazio")
     .max(200, "Padrão muito longo"),
   categoryId: z.string().uuid("Categoria é obrigatória"),
+  displayName: displayNameField,
   ownerMemberId: z.string().uuid("ID de membro inválido").nullable().optional(),
   paymentMethodId: z.string().uuid("ID de forma de pagamento inválido").nullable().optional(),
   priority: z.number().int("Prioridade deve ser um número inteiro").default(0),

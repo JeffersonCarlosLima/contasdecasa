@@ -28,6 +28,8 @@ Fluxo para importação de extratos bancários e faturas de cartão (arquivos OF
 
 ### `/importar/[id]` (Revisão do Lote)
 - Lista e classificação dos lançamentos importados com sugestões automáticas por regras ou histórico (tipo, categoria, responsável, ignorar).
+- **Descrição editável** em cada linha (campo `.cc-input` na coluna Descrição, no card do celular também): salva ao sair do campo ou com Enter, Esc desfaz; vazio volta para o texto do extrato. Quando editada, mostra abaixo em legenda "No extrato: {texto original}". A despesa é gravada com a descrição editada. *(Pedido do Jefferson em 2026-11-11.)*
+- **"Lembrar regra"** (modal) ganha o campo opcional **"Nome a usar na despesa"**, pré-preenchido com a descrição editada. Nas próximas importações, lançamentos que casarem com a regra já chegam com esse nome (além da categoria/dono). O mesmo campo aparece na seção de regras em `/tipos`, e a lista mostra "padrão → nome".
 - Desktop: tabela de revisão (`ReviewTable`) com ações em lote (`BulkActionsBar`) e botão primário **"Continuar para confirmação ({n})"** nas ações do topo (`.cc-top .cc-actions`).
 - **Celular:** cards de revisão (`ReviewMobileCards`). **O botão "Continuar para confirmação" fica numa barra fixa no rodapé (sai do topo no celular)**, com contador de lançamentos selecionados e motivo visível quando desabilitado (ex.: "Selecione ao menos um lançamento", "X despesas selecionadas sem categoria", "X receitas selecionadas sem responsável").
 

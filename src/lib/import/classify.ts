@@ -29,7 +29,12 @@ export const DEFAULT_SALARIO_PATTERNS = [
 export function applyRules(
   row: ParsedRow,
   rules: ClassificationRule[]
-): { categoryId: string; ownerId: string | null; paymentMethodId: string | null } | null {
+): {
+  categoryId: string;
+  ownerId: string | null;
+  paymentMethodId: string | null;
+  displayName: string | null;
+} | null {
   if (!rules || rules.length === 0) {
     return null;
   }
@@ -54,6 +59,7 @@ export function applyRules(
         categoryId: rule.categoryId,
         ownerId: rule.ownerId ?? null,
         paymentMethodId: rule.paymentMethodId ?? null,
+        displayName: rule.displayName?.trim() || null,
       };
     }
   }

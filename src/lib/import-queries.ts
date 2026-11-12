@@ -40,6 +40,8 @@ export interface ImportRowReviewItem {
   date: string;
   descriptionOriginal: string;
   descriptionNormalized: string;
+  /** Descrição ajustada na revisão; nulo = usa a original. */
+  descriptionEdited: string | null;
   amountCents: number;
   type: "despesa" | "receita" | "salario" | "ignorar";
   ignoreReason: string | null;
@@ -84,6 +86,7 @@ export interface ImportRuleItem {
   id: string;
   matchType: "contem" | "comeca";
   pattern: string;
+  displayName: string | null;
   priority: number;
   categoryId: string;
   ownerMemberId?: string | null;
@@ -253,6 +256,7 @@ export async function getBatchReview(
     date: r.row.date,
     descriptionOriginal: r.row.descriptionOriginal,
     descriptionNormalized: r.row.descriptionNormalized,
+    descriptionEdited: r.row.descriptionEdited,
     amountCents: r.row.amountCents,
     type: r.row.type,
     ignoreReason: r.row.ignoreReason,
@@ -383,6 +387,7 @@ export async function listRules(familyId: string): Promise<ImportRuleItem[]> {
     id: r.rule.id,
     matchType: r.rule.matchType,
     pattern: r.rule.pattern,
+    displayName: r.rule.displayName,
     priority: r.rule.priority,
     categoryId: r.rule.categoryId,
     ownerMemberId: r.rule.ownerMemberId,

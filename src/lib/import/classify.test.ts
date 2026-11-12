@@ -41,7 +41,21 @@ describe("classify", () => {
         categoryId: "cat_transporte_alta",
         ownerId: null,
         paymentMethodId: null,
+        displayName: null,
       });
+    });
+
+    it("devolve o nome salvo na regra para renomear o lançamento", () => {
+      const row = createMockRow({ descriptionNormalized: "PIX QR CODE ESTATICO" });
+      const rules: ClassificationRule[] = [
+        {
+          matchType: "contem",
+          pattern: "PIX QR CODE ESTATICO",
+          categoryId: "cat_cartoes",
+          displayName: "  Fatura Nubank  ",
+        },
+      ];
+      expect(applyRules(row, rules)?.displayName).toBe("Fatura Nubank");
     });
 
     it("aplica regra por 'comeca'", () => {
