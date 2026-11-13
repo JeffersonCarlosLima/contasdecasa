@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, gte, isNull } from "drizzle-orm";
+import { and, eq, gt, gte, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { expenses, recurringExpenses } from "@/db/schema";
 import { futureInstallments, futureRecurrences } from "@/lib/calc/installments";
@@ -18,6 +18,60 @@ import {
 export type ActionResult<T = Record<string, unknown>> =
   | ({ ok: true } & T)
   | { ok: false; error: string };
+
+/** Se o usuário alterou o total de parcelas de uma compra já parcelada, estende ou encurta a série. */
+async function resizeInstallmentGroup(args: {
+  existing: typeof expenses.$inferSelect;
+  newTotal: number | null;
+  familyId: string;
+  memberId: string;
+  data: { dueDate: string; description: string; amountCents: number; categoryId: string; ownerMemberId?: string | null; paymentMethodId?: string | null; notes?: string | null };
+}) {
+  const { existing, newTotal, familyId, memberId, data } = args;
+  if (!existing.installmentGroupId || !existing.installmentNumber || !newTotal) return;
+  if (newTotal === existing.installmentTotal) return;
+
+  const group = and(
+    eq(expenses.familyId, familyId),
+    eq(expenses.installmentGroupId, existing.installmentGroupId),
+    isNull(expenses.deletedAt)
+  );
+  const rows = await db.select().from(expenses).where(group);
+  const maxNumber = rows.reduce((mx, r) => Math.max(mx, r.installmentNumber ?? 0), 0);
+
+  await db.update(expenses).set({ installmentTotal: newTotal, updatedAt: new Date() }).where(group);
+
+  if (newTotal < maxNumber) {
+    await db
+      .update(expenses)
+      .set({ deletedAt: new Date(), updatedAt: new Date() })
+      .where(and(group, gt(expenses.installmentNumber, newTotal)));
+  } else if (newTotal > maxNumber) {
+    const last = rows.find((r) => r.installmentNumber === maxNumber);
+    const lastDue = last?.dueDate ?? data.dueDate;
+    const more = futureInstallments({ dueDate: lastDue, current: maxNumber, total: newTotal });
+    if (more.length > 0) {
+      await db.insert(expenses).values(
+        more.map((fut) => ({
+          familyId,
+          referenceMonth: fut.referenceMonth,
+          dueDate: fut.dueDate,
+          description: existing.description,
+          amountCents: existing.amountCents,
+          categoryId: existing.categoryId,
+          ownerMemberId: existing.ownerMemberId,
+          createdByMemberId: memberId,
+          paymentMethodId: existing.paymentMethodId,
+          status: "pendente" as const,
+          installmentGroupId: existing.installmentGroupId,
+          installmentNumber: fut.number,
+          installmentTotal: newTotal,
+          notes: existing.notes,
+        }))
+      );
+    }
+  }
+}
 
 export async function saveExpense(
   input: SaveExpenseInput,
@@ -126,6 +180,13 @@ export async function saveExpense(
             )
           );
 
+        await resizeInstallmentGroup({
+          existing,
+          newTotal: data.installment?.total ?? null,
+          familyId,
+          memberId: member.id,
+          data,
+        });
         return { ok: true, id: data.id };
       }
 
@@ -273,6 +334,13 @@ export async function saveExpense(
           )
         );
 
+      await resizeInstallmentGroup({
+        existing,
+        newTotal: data.installment?.total ?? null,
+        familyId,
+        memberId: member.id,
+        data,
+      });
       return { ok: true, id: data.id };
     }
 
