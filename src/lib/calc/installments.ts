@@ -40,3 +40,27 @@ export function futureInstallments(args: {
   }
   return out;
 }
+
+/** Quantos meses à frente uma despesa recorrente já é lançada ao ser marcada como recorrente. */
+export const RECURRING_MONTHS_AHEAD = 12;
+
+/**
+ * Ocorrências FUTURAS de uma despesa recorrente: mesmo dia de vencimento (ajustado ao
+ * último dia do mês quando necessário) nos `monthsAhead` meses seguintes.
+ */
+export function futureRecurrences(args: {
+  dueDate: string;
+  monthsAhead?: number;
+}): Array<{ dueDate: string; referenceMonth: string }> {
+  const { dueDate, monthsAhead = RECURRING_MONTHS_AHEAD } = args;
+  const [y, m, d] = dueDate.split("-").map(Number) as [number, number, number];
+  const base = `${y}-${pad(m)}-01`;
+  const out: Array<{ dueDate: string; referenceMonth: string }> = [];
+  for (let i = 1; i <= monthsAhead; i++) {
+    const referenceMonth = addMonths(base, i);
+    const [ry, rm] = referenceMonth.split("-").map(Number) as [number, number];
+    const day = Math.min(d, daysInMonth(ry, rm));
+    out.push({ referenceMonth, dueDate: `${ry}-${pad(rm)}-${pad(day)}` });
+  }
+  return out;
+}

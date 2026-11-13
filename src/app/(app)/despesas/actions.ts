@@ -3,7 +3,7 @@
 import { and, eq, gte, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { expenses, recurringExpenses } from "@/db/schema";
-import { futureInstallments } from "@/lib/calc/installments";
+import { futureInstallments, futureRecurrences } from "@/lib/calc/installments";
 import { assertMonthOpen, toMonthDate } from "@/lib/period";
 import { requireMember } from "@/lib/session";
 import {
@@ -125,6 +125,126 @@ export async function saveExpense(
               eq(expenses.familyId, familyId)
             )
           );
+
+        return { ok: true, id: data.id };
+      }
+
+      // Despesa avulsa que virou parcelada na edição: vira a parcela atual e gera as futuras
+      if (data.installment && !existing.installmentGroupId) {
+        const inst = data.installment;
+        const installmentGroupId = crypto.randomUUID();
+
+        await db.transaction(async (tx) => {
+          await tx
+            .update(expenses)
+            .set({
+              description: data.description,
+              amountCents: data.amountCents,
+              categoryId: data.categoryId,
+              ownerMemberId: data.ownerMemberId ?? null,
+              paymentMethodId: data.paymentMethodId ?? null,
+              dueDate: data.dueDate,
+              referenceMonth: referenceMonthDate,
+              status: data.paid ? "pago" : "pendente",
+              paidAt: data.paid ? (existing.paidAt || new Date()) : null,
+              paidByMemberId: data.paid ? (data.paidByMemberId || member.id) : null,
+              installmentGroupId,
+              installmentNumber: inst.current,
+              installmentTotal: inst.total,
+              notes: data.notes ?? null,
+              updatedAt: new Date(),
+            })
+            .where(and(eq(expenses.id, data.id!), eq(expenses.familyId, familyId)));
+
+          if (inst.current < inst.total) {
+            const futureList = futureInstallments({
+              dueDate: data.dueDate,
+              current: inst.current,
+              total: inst.total,
+            });
+
+            if (futureList.length > 0) {
+              await tx.insert(expenses).values(
+                futureList.map((fut) => ({
+                  familyId,
+                  referenceMonth: fut.referenceMonth,
+                  dueDate: fut.dueDate,
+                  description: data.description,
+                  amountCents: data.amountCents,
+                  categoryId: data.categoryId,
+                  ownerMemberId: data.ownerMemberId ?? null,
+                  createdByMemberId: member.id,
+                  paymentMethodId: data.paymentMethodId ?? null,
+                  status: "pendente" as const,
+                  installmentGroupId,
+                  installmentNumber: fut.number,
+                  installmentTotal: inst.total,
+                  notes: data.notes ?? null,
+                }))
+              );
+            }
+          }
+        });
+
+        return { ok: true, id: data.id };
+      }
+
+      // Despesa avulsa que virou recorrente na edição: cria o modelo e lança nos meses seguintes
+      if (data.recurring && !data.installment && !existing.installmentGroupId && !existing.recurringId) {
+        await db.transaction(async (tx) => {
+          const [rec] = await tx
+            .insert(recurringExpenses)
+            .values({
+              familyId,
+              description: data.description,
+              amountCents: data.amountCents,
+              categoryId: data.categoryId,
+              ownerMemberId: data.ownerMemberId ?? null,
+              paymentMethodId: data.paymentMethodId ?? null,
+              dueDay: Number(data.dueDate.slice(8, 10)),
+              active: true,
+            })
+            .returning();
+          const recurringId = rec?.id ?? null;
+
+          await tx
+            .update(expenses)
+            .set({
+              description: data.description,
+              amountCents: data.amountCents,
+              categoryId: data.categoryId,
+              ownerMemberId: data.ownerMemberId ?? null,
+              paymentMethodId: data.paymentMethodId ?? null,
+              dueDate: data.dueDate,
+              referenceMonth: referenceMonthDate,
+              status: data.paid ? "pago" : "pendente",
+              paidAt: data.paid ? (existing.paidAt || new Date()) : null,
+              paidByMemberId: data.paid ? (data.paidByMemberId || member.id) : null,
+              recurringId,
+              notes: data.notes ?? null,
+              updatedAt: new Date(),
+            })
+            .where(and(eq(expenses.id, data.id!), eq(expenses.familyId, familyId)));
+
+          if (recurringId) {
+            await tx.insert(expenses).values(
+              futureRecurrences({ dueDate: data.dueDate }).map((fut) => ({
+                familyId,
+                referenceMonth: fut.referenceMonth,
+                dueDate: fut.dueDate,
+                description: data.description,
+                amountCents: data.amountCents,
+                categoryId: data.categoryId,
+                ownerMemberId: data.ownerMemberId ?? null,
+                createdByMemberId: member.id,
+                paymentMethodId: data.paymentMethodId ?? null,
+                status: "pendente" as const,
+                recurringId,
+                notes: data.notes ?? null,
+              }))
+            );
+          }
+        });
 
         return { ok: true, id: data.id };
       }
@@ -269,6 +389,26 @@ export async function saveExpense(
 
         if (single) {
           createdExpenseId = single.id;
+        }
+
+        // Recorrente: já lança nos meses seguintes
+        if (recurringId) {
+          await tx.insert(expenses).values(
+            futureRecurrences({ dueDate: data.dueDate }).map((fut) => ({
+              familyId,
+              referenceMonth: fut.referenceMonth,
+              dueDate: fut.dueDate,
+              description: data.description,
+              amountCents: data.amountCents,
+              categoryId: data.categoryId,
+              ownerMemberId: data.ownerMemberId ?? null,
+              createdByMemberId: member.id,
+              paymentMethodId: data.paymentMethodId ?? null,
+              status: "pendente" as const,
+              recurringId,
+              notes: data.notes ?? null,
+            }))
+          );
         }
       }
     });

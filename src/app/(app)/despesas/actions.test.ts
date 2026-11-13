@@ -178,6 +178,85 @@ describe("despesas actions", () => {
     });
   });
 
+  describe("saveExpense: avulsa vira parcelada na edição", () => {
+    it("converte a despesa em parcela 36/48 e gera 37 a 48 nos meses seguintes", async () => {
+      const validUuid = "a0000000-0000-4000-8000-000000000001";
+      vi.mocked(db.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([
+              { id: validUuid, familyId: "fam_123", ownerMemberId: validUuid, installmentGroupId: null },
+            ]),
+          }),
+        }),
+      } as unknown as ReturnType<typeof db.select>);
+
+      const setMock = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([]) });
+      const valuesMock = vi.fn().mockResolvedValue([]);
+      vi.mocked(db.transaction).mockImplementationOnce((async (cb: (tx: unknown) => unknown) =>
+        cb({
+          update: vi.fn().mockReturnValue({ set: setMock }),
+          insert: vi.fn().mockReturnValue({ values: valuesMock }),
+        })) as never);
+
+      const res = await saveExpense({
+        id: validUuid,
+        month: "2026-11",
+        description: "Carro",
+        amountCents: 50000,
+        categoryId: validUuid,
+        dueDate: "2026-11-10",
+        installment: { current: 36, total: 48 },
+      });
+
+      expect(res).toEqual({ ok: true, id: validUuid });
+      expect(setMock.mock.calls[0]![0]).toMatchObject({ installmentNumber: 36, installmentTotal: 48 });
+      const rows = valuesMock.mock.calls[0]![0] as Array<{ installmentNumber: number; referenceMonth: string }>;
+      expect(rows).toHaveLength(12);
+      expect(rows[0]).toMatchObject({ installmentNumber: 37, referenceMonth: "2026-12-01" });
+      expect(rows[11]).toMatchObject({ installmentNumber: 48, referenceMonth: "2027-11-01" });
+    });
+
+    it("avulsa marcada como recorrente na edição já lança 12 meses à frente", async () => {
+      const validUuid = "a0000000-0000-4000-8000-000000000001";
+      vi.mocked(db.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([
+              { id: validUuid, familyId: "fam_123", ownerMemberId: validUuid, installmentGroupId: null, recurringId: null },
+            ]),
+          }),
+        }),
+      } as unknown as ReturnType<typeof db.select>);
+
+      const valuesMock = vi
+        .fn()
+        .mockReturnValueOnce({ returning: vi.fn().mockResolvedValue([{ id: "rec-1" }]) })
+        .mockResolvedValueOnce([]);
+      vi.mocked(db.transaction).mockImplementationOnce((async (cb: (tx: unknown) => unknown) =>
+        cb({
+          update: vi.fn().mockReturnValue({ set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([]) }) }),
+          insert: vi.fn().mockReturnValue({ values: valuesMock }),
+        })) as never);
+
+      const res = await saveExpense({
+        id: validUuid,
+        month: "2026-11",
+        description: "Internet",
+        amountCents: 12000,
+        categoryId: validUuid,
+        dueDate: "2026-11-31".replace("31", "30"),
+        recurring: true,
+      });
+
+      expect(res).toEqual({ ok: true, id: validUuid });
+      const rows = valuesMock.mock.calls[1]![0] as Array<{ referenceMonth: string; recurringId: string }>;
+      expect(rows).toHaveLength(12);
+      expect(rows[0]).toMatchObject({ referenceMonth: "2026-12-01", recurringId: "rec-1" });
+      expect(rows[11]).toMatchObject({ referenceMonth: "2027-11-01" });
+    });
+  });
+
   describe("deleteExpense", () => {
     it("impede membro comum de excluir despesa de outro membro", async () => {
       vi.mocked(db.select).mockReturnValueOnce({
