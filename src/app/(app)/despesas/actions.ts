@@ -1,9 +1,9 @@
 "use server";
 
-import { and, eq, gte, isNull } from "drizzle-orm";
+import { and, eq, gt, gte, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { expenses, recurringExpenses } from "@/db/schema";
-import { futureInstallments } from "@/lib/calc/installments";
+import { futureInstallments, futureRecurrences } from "@/lib/calc/installments";
 import { assertMonthOpen, toMonthDate } from "@/lib/period";
 import { requireMember } from "@/lib/session";
 import {
@@ -18,6 +18,60 @@ import {
 export type ActionResult<T = Record<string, unknown>> =
   | ({ ok: true } & T)
   | { ok: false; error: string };
+
+/** Se o usuário alterou o total de parcelas de uma compra já parcelada, estende ou encurta a série. */
+async function resizeInstallmentGroup(args: {
+  existing: typeof expenses.$inferSelect;
+  newTotal: number | null;
+  familyId: string;
+  memberId: string;
+  data: { dueDate: string; description: string; amountCents: number; categoryId: string; ownerMemberId?: string | null; paymentMethodId?: string | null; notes?: string | null };
+}) {
+  const { existing, newTotal, familyId, memberId, data } = args;
+  if (!existing.installmentGroupId || !existing.installmentNumber || !newTotal) return;
+  if (newTotal === existing.installmentTotal) return;
+
+  const group = and(
+    eq(expenses.familyId, familyId),
+    eq(expenses.installmentGroupId, existing.installmentGroupId),
+    isNull(expenses.deletedAt)
+  );
+  const rows = await db.select().from(expenses).where(group);
+  const maxNumber = rows.reduce((mx, r) => Math.max(mx, r.installmentNumber ?? 0), 0);
+
+  await db.update(expenses).set({ installmentTotal: newTotal, updatedAt: new Date() }).where(group);
+
+  if (newTotal < maxNumber) {
+    await db
+      .update(expenses)
+      .set({ deletedAt: new Date(), updatedAt: new Date() })
+      .where(and(group, gt(expenses.installmentNumber, newTotal)));
+  } else if (newTotal > maxNumber) {
+    const last = rows.find((r) => r.installmentNumber === maxNumber);
+    const lastDue = last?.dueDate ?? data.dueDate;
+    const more = futureInstallments({ dueDate: lastDue, current: maxNumber, total: newTotal });
+    if (more.length > 0) {
+      await db.insert(expenses).values(
+        more.map((fut) => ({
+          familyId,
+          referenceMonth: fut.referenceMonth,
+          dueDate: fut.dueDate,
+          description: existing.description,
+          amountCents: existing.amountCents,
+          categoryId: existing.categoryId,
+          ownerMemberId: existing.ownerMemberId,
+          createdByMemberId: memberId,
+          paymentMethodId: existing.paymentMethodId,
+          status: "pendente" as const,
+          installmentGroupId: existing.installmentGroupId,
+          installmentNumber: fut.number,
+          installmentTotal: newTotal,
+          notes: existing.notes,
+        }))
+      );
+    }
+  }
+}
 
 export async function saveExpense(
   input: SaveExpenseInput,
@@ -126,6 +180,133 @@ export async function saveExpense(
             )
           );
 
+        await resizeInstallmentGroup({
+          existing,
+          newTotal: data.installment?.total ?? null,
+          familyId,
+          memberId: member.id,
+          data,
+        });
+        return { ok: true, id: data.id };
+      }
+
+      // Despesa avulsa que virou parcelada na edição: vira a parcela atual e gera as futuras
+      if (data.installment && !existing.installmentGroupId) {
+        const inst = data.installment;
+        const installmentGroupId = crypto.randomUUID();
+
+        await db.transaction(async (tx) => {
+          await tx
+            .update(expenses)
+            .set({
+              description: data.description,
+              amountCents: data.amountCents,
+              categoryId: data.categoryId,
+              ownerMemberId: data.ownerMemberId ?? null,
+              paymentMethodId: data.paymentMethodId ?? null,
+              dueDate: data.dueDate,
+              referenceMonth: referenceMonthDate,
+              status: data.paid ? "pago" : "pendente",
+              paidAt: data.paid ? (existing.paidAt || new Date()) : null,
+              paidByMemberId: data.paid ? (data.paidByMemberId || member.id) : null,
+              installmentGroupId,
+              installmentNumber: inst.current,
+              installmentTotal: inst.total,
+              notes: data.notes ?? null,
+              updatedAt: new Date(),
+            })
+            .where(and(eq(expenses.id, data.id!), eq(expenses.familyId, familyId)));
+
+          if (inst.current < inst.total) {
+            const futureList = futureInstallments({
+              dueDate: data.dueDate,
+              current: inst.current,
+              total: inst.total,
+            });
+
+            if (futureList.length > 0) {
+              await tx.insert(expenses).values(
+                futureList.map((fut) => ({
+                  familyId,
+                  referenceMonth: fut.referenceMonth,
+                  dueDate: fut.dueDate,
+                  description: data.description,
+                  amountCents: data.amountCents,
+                  categoryId: data.categoryId,
+                  ownerMemberId: data.ownerMemberId ?? null,
+                  createdByMemberId: member.id,
+                  paymentMethodId: data.paymentMethodId ?? null,
+                  status: "pendente" as const,
+                  installmentGroupId,
+                  installmentNumber: fut.number,
+                  installmentTotal: inst.total,
+                  notes: data.notes ?? null,
+                }))
+              );
+            }
+          }
+        });
+
+        return { ok: true, id: data.id };
+      }
+
+      // Despesa avulsa que virou recorrente na edição: cria o modelo e lança nos meses seguintes
+      if (data.recurring && !data.installment && !existing.installmentGroupId && !existing.recurringId) {
+        await db.transaction(async (tx) => {
+          const [rec] = await tx
+            .insert(recurringExpenses)
+            .values({
+              familyId,
+              description: data.description,
+              amountCents: data.amountCents,
+              categoryId: data.categoryId,
+              ownerMemberId: data.ownerMemberId ?? null,
+              paymentMethodId: data.paymentMethodId ?? null,
+              dueDay: Number(data.dueDate.slice(8, 10)),
+              active: true,
+            })
+            .returning();
+          const recurringId = rec?.id ?? null;
+
+          await tx
+            .update(expenses)
+            .set({
+              description: data.description,
+              amountCents: data.amountCents,
+              categoryId: data.categoryId,
+              ownerMemberId: data.ownerMemberId ?? null,
+              paymentMethodId: data.paymentMethodId ?? null,
+              dueDate: data.dueDate,
+              referenceMonth: referenceMonthDate,
+              status: data.paid ? "pago" : "pendente",
+              paidAt: data.paid ? (existing.paidAt || new Date()) : null,
+              paidByMemberId: data.paid ? (data.paidByMemberId || member.id) : null,
+              recurringId,
+              notes: data.notes ?? null,
+              updatedAt: new Date(),
+            })
+            .where(and(eq(expenses.id, data.id!), eq(expenses.familyId, familyId)));
+
+          if (recurringId) {
+            await tx.insert(expenses).values(
+              futureRecurrences({ dueDate: data.dueDate }).map((fut) => ({
+                familyId,
+                referenceMonth: fut.referenceMonth,
+                dueDate: fut.dueDate,
+                description: data.description,
+                amountCents: data.amountCents,
+                categoryId: data.categoryId,
+                ownerMemberId: data.ownerMemberId ?? null,
+                createdByMemberId: member.id,
+                paymentMethodId: data.paymentMethodId ?? null,
+                status: "pendente" as const,
+                recurringId,
+                notes: data.notes ?? null,
+              }))
+            );
+          }
+        });
+
         return { ok: true, id: data.id };
       }
 
@@ -153,6 +334,13 @@ export async function saveExpense(
           )
         );
 
+      await resizeInstallmentGroup({
+        existing,
+        newTotal: data.installment?.total ?? null,
+        familyId,
+        memberId: member.id,
+        data,
+      });
       return { ok: true, id: data.id };
     }
 
@@ -269,6 +457,26 @@ export async function saveExpense(
 
         if (single) {
           createdExpenseId = single.id;
+        }
+
+        // Recorrente: já lança nos meses seguintes
+        if (recurringId) {
+          await tx.insert(expenses).values(
+            futureRecurrences({ dueDate: data.dueDate }).map((fut) => ({
+              familyId,
+              referenceMonth: fut.referenceMonth,
+              dueDate: fut.dueDate,
+              description: data.description,
+              amountCents: data.amountCents,
+              categoryId: data.categoryId,
+              ownerMemberId: data.ownerMemberId ?? null,
+              createdByMemberId: member.id,
+              paymentMethodId: data.paymentMethodId ?? null,
+              status: "pendente" as const,
+              recurringId,
+              notes: data.notes ?? null,
+            }))
+          );
         }
       }
     });
