@@ -21,7 +21,9 @@ export function AuthForm({ mode, inviteToken }: AuthFormProps) {
 
   const validToken = isValidInviteToken(inviteToken) ? inviteToken : null;
   const targetUrl = validToken ? `/convite/${validToken}` : "/";
-  const conviteQuery = validToken ? `?convite=${encodeURIComponent(validToken)}` : "";
+  const conviteQuery = validToken
+    ? `?convite=${encodeURIComponent(validToken)}`
+    : "";
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -31,13 +33,16 @@ export function AuthForm({ mode, inviteToken }: AuthFormProps) {
   const [error, setError] = useState("");
   const [showForgotNotice, setShowForgotNotice] = useState(false);
 
-  const RATE_LIMIT_MSG = "Muitas tentativas. Aguarde um minuto e tente de novo.";
+  const RATE_LIMIT_MSG =
+    "Muitas tentativas. Aguarde um minuto e tente de novo.";
 
   // Traduz a falha do Better Auth para o texto certo de cada modo (spec 01-entrar).
   const messageFor = (status?: number, code?: string) => {
     if (status === 429) return RATE_LIMIT_MSG;
-    if (mode === "entrar") return "Email ou senha incorretos. Confira e tente de novo.";
-    if (code?.includes("ALREADY_EXISTS")) return "Este email já tem conta. Entre ou use outro.";
+    if (mode === "entrar")
+      return "Email ou senha incorretos. Confira e tente de novo.";
+    if (code?.includes("ALREADY_EXISTS"))
+      return "Este email já tem conta. Entre ou use outro.";
     return "Não foi possível criar a conta. Confira os dados e tente de novo.";
   };
 
@@ -45,7 +50,9 @@ export function AuthForm({ mode, inviteToken }: AuthFormProps) {
     setError(message);
     setLoading(false);
     // Leva o foco ao primeiro campo para quem usa teclado ou leitor de tela.
-    document.getElementById(mode === "cadastro" ? "auth-name" : "auth-email")?.focus();
+    document
+      .getElementById(mode === "cadastro" ? "auth-name" : "auth-email")
+      ?.focus();
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -57,7 +64,12 @@ export function AuthForm({ mode, inviteToken }: AuthFormProps) {
       const res =
         mode === "entrar"
           ? await authClient.signIn.email({ email, password, rememberMe })
-          : await authClient.signUp.email({ name, email, password, fetchOptions: { body: { rememberMe } } });
+          : await authClient.signUp.email({
+              name,
+              email,
+              password,
+              fetchOptions: { body: { rememberMe } },
+            });
 
       if (res?.error) {
         fail(messageFor(res.error.status, res.error.code));
@@ -82,7 +94,11 @@ export function AuthForm({ mode, inviteToken }: AuthFormProps) {
         value={mode}
         onChange={(val) => {
           if (val !== mode) {
-            router.push(val === "entrar" ? `/entrar${conviteQuery}` : `/cadastro${conviteQuery}`);
+            router.push(
+              val === "entrar"
+                ? `/entrar${conviteQuery}`
+                : `/cadastro${conviteQuery}`,
+            );
           }
         }}
         style={{ alignSelf: "flex-start" }}
@@ -110,7 +126,10 @@ export function AuthForm({ mode, inviteToken }: AuthFormProps) {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <form
+        onSubmit={handleSubmit}
+        style={{ display: "flex", flexDirection: "column", gap: 16 }}
+      >
         {mode === "cadastro" && (
           <Field
             id="auth-name"
@@ -161,7 +180,10 @@ export function AuthForm({ mode, inviteToken }: AuthFormProps) {
             flexWrap: "wrap",
           }}
         >
-          <label className="cc-check" style={{ minHeight: 44, cursor: "pointer" }}>
+          <label
+            className="cc-check"
+            style={{ minHeight: 44, cursor: "pointer" }}
+          >
             <input
               type="checkbox"
               checked={rememberMe}
@@ -171,7 +193,9 @@ export function AuthForm({ mode, inviteToken }: AuthFormProps) {
           </label>
 
           {mode === "entrar" && (
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+            <div
+              style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+            >
               <button
                 type="button"
                 className="label"
@@ -229,7 +253,8 @@ export function AuthForm({ mode, inviteToken }: AuthFormProps) {
       >
         <span className="label">Recebeu um convite?</span>
         <span className="caption cc-muted">
-          Crie sua conta com o mesmo email do convite e você entra direto na família que te convidou.
+          Crie sua conta com o mesmo email do convite e você entra direto na
+          família que te convidou.
         </span>
       </div>
 
