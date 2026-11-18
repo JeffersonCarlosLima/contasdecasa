@@ -117,7 +117,7 @@ body { font-family: var(--font-sans); color: var(--ink); background: var(--surfa
 
 /* MonthSwitcher */
 .cc-month { display: inline-flex; align-items: center; gap: var(--space-1); background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius-full); padding: var(--space-1); }
-.cc-month__btn { width: 32px; height: 32px; border-radius: var(--radius-full); border: 0; background: transparent; color: var(--ink); display: grid; place-items: center; cursor: pointer; }
+.cc-month__btn { width: 44px; height: 44px; border-radius: var(--radius-full); border: 0; background: transparent; color: var(--ink); display: grid; place-items: center; cursor: pointer; }
 .cc-month__btn:hover { background: var(--brand-soft); }
 .cc-month__btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .cc-month__label { min-width: 132px; text-align: center; font: 600 15px/22px var(--font-sans); }

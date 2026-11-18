@@ -103,7 +103,7 @@ export function ReviewTable({
                   backgroundColor: isSelected
                     ? "var(--surface-raised)"
                     : "var(--surface-sunken)",
-                  opacity: isIgnored ? 0.65 : 1,
+                  opacity: 1, // sem transparência: o texto precisa manter contraste AA; o fundo sunken já diferencia a linha
                   boxShadow:
                     isMissingCategory || isMissingOwner
                       ? "inset 3px 0 0 var(--danger)"

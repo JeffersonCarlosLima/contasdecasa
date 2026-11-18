@@ -290,7 +290,7 @@ export function PaymentMethodSection({
                     <div
                       key={pm.id}
                       className="cc-expense"
-                      style={{ opacity: 0.65 }}
+                      style={{ background: "var(--surface-sunken)" }}
                     >
                       <div className="cc-expense__icon">
                         <PaymentMethodIcon
