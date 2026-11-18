@@ -91,10 +91,18 @@
   .cc-btn--sm { min-height:40px; }
   .cc-month__btn { width:44px; height:44px; min-width:44px; min-height:44px; }
   .cc-chip { min-height:40px; }
+  /* Campos com 16px+: abaixo disso o Safari iOS dá zoom ao focar e desloca a tela. Campos têm 44px (contrato). */
+  .cc-select { min-height:44px; font-size:16px; line-height:22px; }
+  .cc-input input.cc-input__text { font-size:16px; line-height:24px; }
 }
 @media (min-width: 761px) and (min-height: 501px),
        (min-width: 761px) and (orientation: portrait),
        (min-width: 761px) and (not (pointer: coarse)),
        (min-width: 761px) and (pointer: fine) {
   .cc-only-sm { display:none !important; }
+}
+
+/* Respeita quem pediu menos movimento: sem transições nem rolagem suave. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration:.01ms !important; animation-duration:.01ms !important; animation-iteration-count:1 !important; scroll-behavior:auto !important; }
 }
