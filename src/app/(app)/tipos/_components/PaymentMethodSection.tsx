@@ -281,7 +281,7 @@ export function PaymentMethodSection({
                     className="caption cc-muted"
                     style={{
                       padding: "var(--space-2) var(--space-3)",
-                      fontWeight: "var(--font-medium)",
+                      fontWeight: 500,
                     }}
                   >
                     Arquivadas

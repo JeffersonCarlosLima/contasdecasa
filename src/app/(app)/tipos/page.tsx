@@ -33,7 +33,7 @@ export default async function TiposPage() {
       <div className="cc-wrap">
         <div className="cc-top">
           <div className="cc-top__titles">
-            <h1 className="heading cc-hide-sm">Tipos e formas</h1>
+            <h1 className="heading cc-sr-only-sm">Tipos e formas</h1>
             <span className="body cc-muted">
               Os tipos agrupam as despesas no dashboard. A cor é a mesma em
               todos os gráficos.

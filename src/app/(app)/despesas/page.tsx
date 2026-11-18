@@ -63,7 +63,7 @@ export default async function DespesasPage({ searchParams }: DespesasPageProps) 
 
         <div className="cc-top">
           <div className="cc-top__titles">
-            <h1 className="heading cc-hide-sm">Despesas da família</h1>
+            <h1 className="heading cc-sr-only-sm">Despesas da família</h1>
             <span className="body cc-muted">
               {count} {countLabel} · {formatBRL(expenseData.totals.totalCents)} ·{" "}
               {formatBRL(expenseData.totals.pendingCents)} pendentes
