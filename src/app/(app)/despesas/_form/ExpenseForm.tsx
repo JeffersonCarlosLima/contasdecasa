@@ -273,6 +273,8 @@ export function ExpenseForm({
 
   return (
     <>
+      {/* No celular o título visível está no cabeçalho móvel; o h1 fica só para leitores de tela. */}
+      <h1 className="cc-sr-only cc-only-sm">{isEdit ? "Editar despesa" : "Lançar despesa"}</h1>
       <div className="cc-top cc-hide-sm">
         <div className="cc-top__titles">
           <Link href={backHref} className="label" style={{ textDecoration: "none" }}>
@@ -289,7 +291,7 @@ export function ExpenseForm({
           style={{
             fontSize: 14,
             padding: "12px 16px",
-            backgroundColor: "var(--danger-subtle, #fde8e8)",
+            backgroundColor: "var(--danger-soft)",
             borderRadius: "var(--radius-md, 8px)",
             marginBottom: "var(--space-3)",
           }}

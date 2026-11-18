@@ -50,7 +50,6 @@ export function ReviewMobileCards({
     <div className="cc-list cc-only-sm" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {rows.map((row) => {
         const isSelectable = isRowSelectable(row);
-        const isIgnored = !isSelectable;
         const isSelected = selectedIds.has(row.id) && isSelectable;
         const isExpense = row.type === "despesa";
         const isIncome = row.type === "receita" || row.type === "salario";
@@ -69,7 +68,7 @@ export function ReviewMobileCards({
               backgroundColor: isSelected
                 ? "var(--surface-raised)"
                 : "var(--surface-sunken)",
-              opacity: isIgnored ? 0.65 : 1,
+              opacity: 1, // sem transparência: o texto precisa manter contraste AA; o fundo sunken já diferencia a linha
               border: isMissingCategory || isMissingOwner ? "1px solid var(--danger)" : undefined,
               boxShadow: isMissingCategory || isMissingOwner ? "inset 3px 0 0 var(--danger)" : undefined,
             }}

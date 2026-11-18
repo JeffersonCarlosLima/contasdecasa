@@ -29,7 +29,7 @@ export default async function HistoricoImportacoesPage() {
       <div className="cc-wrap">
         <div className="cc-top">
           <div className="cc-top__titles">
-            <h1 className="heading cc-hide-sm">Histórico de importações</h1>
+            <h1 className="heading cc-sr-only-sm">Histórico de importações</h1>
             <span className="body cc-muted">
               Lotes de extrato importados, com status e opção de desfazer lançamentos.
             </span>
