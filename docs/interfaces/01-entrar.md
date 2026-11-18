@@ -30,3 +30,10 @@ Protótipo: `docs/design/telas/Login.dc.html`. Sem menu lateral nem barra inferi
 - Erro de credencial: hint de erro sob o campo/topo em `--danger`: "Email ou senha incorretos. Confira e tente de novo."
 - Carregando: botão desabilitado com rótulo "Entrando…".
 - Rate limit: "Muitas tentativas. Aguarde um minuto e tente de novo."
+
+## Estados do cadastro (aprovados pelo Jefferson em 2026-11-18)
+
+- Email já cadastrado: "Este email já tem conta. Entre ou use outro."
+- Outra falha ao criar conta: "Não foi possível criar a conta. Confira os dados e tente de novo."
+- Carregando no cadastro: botão desabilitado com rótulo "Criando conta…".
+- Erros movem o foco para o primeiro campo; "Manter conectado" vale também no cadastro.
