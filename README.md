@@ -13,7 +13,7 @@ salários e rendas extras consolidados por competência, investimentos planejado
 - **ORM & Migrations:** [Drizzle ORM](https://orm.drizzle.team/) & `drizzle-kit`
 - **Autenticação:** [Better Auth](https://www.better-auth.com/) (sessões seguras por cookie HTTP-only)
 - **Estilização & Design System:** [Tailwind CSS v4](https://tailwindcss.com/) com tokens semânticos em variáveis CSS (`var(--...)`) e ícones [Lucide React](https://lucide.dev/)
-- **Visualização de Dados:** [Recharts](https://recharts.org/)
+- **Visualização de Dados:** gráficos em CSS puro com os tokens do design system (Recharts foi removido por não ser usado).
 - **Validação de Schemas:** [Zod](https://zod.dev/)
 - **Testes & Qualidade:** [Vitest](https://vitest.dev/) e ESLint
 - **Gerenciador de Pacotes:** [pnpm](https://pnpm.io/) (v10 via Corepack)
