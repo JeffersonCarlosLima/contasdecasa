@@ -4,6 +4,7 @@ import { and, count, eq, gt, gte, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { families, familyInvites, familyMembers, user } from "@/db/schema";
 import { createInviteToken, inviteLink } from "@/lib/invites";
+import { after } from "next/server";
 import { sendInviteEmail } from "@/lib/mail";
 import { type MemberRole, requireRole } from "@/lib/session";
 import {
@@ -245,18 +246,22 @@ export async function inviteMember(
     const link = inviteLink(token);
 
     // 5. Envia email se houver email informado e SMTP estiver configurado (sem falhar a action caso dê erro de rede)
-    if (data.email) {
+    const recipient = data.email;
+    if (recipient) {
       const [fam] = await db
         .select({ name: families.name })
         .from(families)
         .where(eq(families.id, sessionMember.familyId))
         .limit(1);
 
-      await sendInviteEmail({
-        to: data.email,
-        familyName: fam?.name || "Família",
-        link,
-      }).catch(() => null);
+      // Depois da resposta: o convite já está salvo e o link aparece na tela sem esperar o SMTP.
+      after(() =>
+        sendInviteEmail({
+          to: recipient,
+          familyName: fam?.name || "Família",
+          link,
+        }).catch(() => null),
+      );
     }
 
     return { ok: true, link };
@@ -308,18 +313,22 @@ export async function resendInvite(
 
     const link = inviteLink(token);
 
-    if (invite.email) {
+    const inviteEmail = invite.email;
+    if (inviteEmail) {
       const [fam] = await db
         .select({ name: families.name })
         .from(families)
         .where(eq(families.id, sessionMember.familyId))
         .limit(1);
 
-      await sendInviteEmail({
-        to: invite.email,
-        familyName: fam?.name || "Família",
-        link,
-      }).catch(() => null);
+      // Depois da resposta: o convite já está salvo e o link aparece na tela sem esperar o SMTP.
+      after(() =>
+        sendInviteEmail({
+          to: inviteEmail,
+          familyName: fam?.name || "Família",
+          link,
+        }).catch(() => null),
+      );
     }
 
     return { ok: true, link };

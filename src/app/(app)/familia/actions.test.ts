@@ -16,6 +16,12 @@ vi.mock("@/db", () => ({
   },
 }));
 
+vi.mock("next/server", () => ({
+  after: (fn: () => unknown) => {
+    void fn();
+  },
+}));
+
 vi.mock("@/lib/mail", () => ({
   sendInviteEmail: vi.fn().mockResolvedValue({ sent: false }),
 }));
