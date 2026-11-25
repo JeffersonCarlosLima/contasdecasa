@@ -1,0 +1,2 @@
+CREATE INDEX IF NOT EXISTS "family_members_user_status_idx" ON "family_members" USING btree ("user_id","status");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "recurring_expenses_family_active_idx" ON "recurring_expenses" USING btree ("family_id","active");

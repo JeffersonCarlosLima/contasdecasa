@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
@@ -64,6 +65,14 @@ export async function requireMember() {
     role: member.role,
   };
 }
+
+/**
+ * Versão deduplicada por requisição, para uso em layouts e páginas (Server Components):
+ * o layout e a página chamam `requireMember` na mesma renderização e só uma consulta roda.
+ * Server Actions devem continuar usando `requireMember`/`requireRole` (sem cache), porque
+ * uma ação pode alterar o próprio membro e a re-renderização precisa ver o dado novo.
+ */
+export const requireMemberCached = cache(requireMember);
 
 export async function requireRole(min: MemberRole) {
   const memberData = await requireMember();

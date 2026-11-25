@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getBatchReview } from "@/lib/import-queries";
-import { requireMember } from "@/lib/session";
+import { requireMemberCached } from "@/lib/session";
 import { ConfirmBatchView } from "./_components/ConfirmBatchView";
 
 interface ConfirmPageProps {
@@ -9,7 +9,7 @@ interface ConfirmPageProps {
 
 export default async function ConfirmPage({ params }: ConfirmPageProps) {
   const { id } = await params;
-  const { familyId } = await requireMember();
+  const { familyId } = await requireMemberCached();
 
   const reviewData = await getBatchReview(familyId, id);
 

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { requireMember } from "@/lib/session";
+import { requireMemberCached } from "@/lib/session";
 import { listPaymentMethods } from "@/lib/catalog-queries";
 import { listFamily } from "@/lib/family-queries";
 import { UploadForm } from "./_upload/UploadForm";
@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default async function ImportarPage() {
-  const { member, familyId, role } = await requireMember();
+  const { member, familyId, role } = await requireMemberCached();
 
   const [allPaymentMethods, familyData] = await Promise.all([
     listPaymentMethods(familyId),

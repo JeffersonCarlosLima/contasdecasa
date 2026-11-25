@@ -44,13 +44,19 @@ describe("family-queries", () => {
     });
 
     it("lança erro se a família não for encontrada", async () => {
-      vi.mocked(db.select).mockReturnValueOnce({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([]),
+      vi.mocked(db.select)
+        .mockReturnValueOnce({
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue([]),
+            }),
           }),
-        }),
-      } as unknown as ReturnType<typeof db.select>);
+        } as unknown as ReturnType<typeof db.select>)
+        .mockReturnValueOnce({
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue([{ count: 0 }]),
+          }),
+        } as unknown as ReturnType<typeof db.select>);
 
       await expect(getShellData("fam_inexistente")).rejects.toThrow("Família não encontrada");
     });

@@ -65,38 +65,47 @@ export async function getMonthClose(familyId: string, month: string): Promise<Mo
   const monthDate = toMonthDate(month);
   const monthKey = toMonthKey(monthDate);
 
-  // 1. Regra padrão da família
-  const [family] = await db
-    .select({ defaultSplitRule: families.defaultSplitRule })
-    .from(families)
-    .where(eq(families.id, familyId))
-    .limit(1);
-
-  // 2. Período do mês (sem criar nada se não existir)
-  const [period] = await db
-    .select()
-    .from(monthlyPeriods)
-    .where(
-      and(
-        eq(monthlyPeriods.familyId, familyId),
-        eq(monthlyPeriods.month, monthDate),
+  // 1-4. Consultas independentes em paralelo: regra padrão da família, período do mês
+  // (sem criar nada se não existir), membros ativos e despesas do mês.
+  const [[family], [period], dbMembers, monthExpenses] = await Promise.all([
+    db
+      .select({ defaultSplitRule: families.defaultSplitRule })
+      .from(families)
+      .where(eq(families.id, familyId))
+      .limit(1),
+    db
+      .select()
+      .from(monthlyPeriods)
+      .where(
+        and(
+          eq(monthlyPeriods.familyId, familyId),
+          eq(monthlyPeriods.month, monthDate),
+        ),
+      )
+      .limit(1),
+    db
+      .select()
+      .from(familyMembers)
+      .where(
+        and(
+          eq(familyMembers.familyId, familyId),
+          ne(familyMembers.status, "removido"),
+        ),
+      )
+      .orderBy(familyMembers.createdAt),
+    db
+      .select()
+      .from(expenses)
+      .where(
+        and(
+          eq(expenses.familyId, familyId),
+          eq(expenses.referenceMonth, monthDate),
+          isNull(expenses.deletedAt),
+        ),
       ),
-    )
-    .limit(1);
+  ]);
 
-  // 3. Membros ativos da família
-  const dbMembers = await db
-    .select()
-    .from(familyMembers)
-    .where(
-      and(
-        eq(familyMembers.familyId, familyId),
-        ne(familyMembers.status, "removido"),
-      ),
-    )
-    .orderBy(familyMembers.createdAt);
-
-  // 4. Rendas salvas no período (se houver período)
+  // Rendas salvas no período (só existem se o período existir)
   const incomeMap = new Map<string, { salaryCents: number; extraCents: number }>();
   if (period) {
     const periodIncomes = await db
@@ -132,18 +141,6 @@ export async function getMonthClose(familyId: string, month: string): Promise<Mo
       extraCents: inc?.extraCents ?? 0,
     };
   });
-
-  // 6. Despesas do mês
-  const monthExpenses = await db
-    .select()
-    .from(expenses)
-    .where(
-      and(
-        eq(expenses.familyId, familyId),
-        eq(expenses.referenceMonth, monthDate),
-        isNull(expenses.deletedAt),
-      ),
-    );
 
   const investMode = period?.investMode ?? "valor";
   const investValue = period?.investValue ?? 0;

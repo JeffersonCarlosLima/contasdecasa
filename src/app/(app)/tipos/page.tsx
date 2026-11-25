@@ -1,4 +1,4 @@
-import { requireMember } from "@/lib/session";
+import { requireMemberCached } from "@/lib/session";
 import { listCategories, listPaymentMethods } from "@/lib/catalog-queries";
 import { listFamily } from "@/lib/family-queries";
 import {
@@ -9,7 +9,7 @@ import {
 } from "./_components";
 
 export default async function TiposPage() {
-  const { familyId, role } = await requireMember();
+  const { familyId, role } = await requireMemberCached();
   const canEdit = role === "admin" || role === "dono";
 
   let rules: RuleItem[] = [];

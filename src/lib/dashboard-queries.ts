@@ -131,6 +131,26 @@ export function formatSettlementText(
   return phrases.join("; ");
 }
 
+function filterByOwner(
+  items: ExpenseItem[],
+  memberId: string | null | undefined,
+): { items: ExpenseItem[]; totals: { count: number; totalCents: number; pendingCents: number } } {
+  const filtered =
+    memberId === "familia" || memberId === ""
+      ? items.filter((i) => i.owner === null)
+      : items.filter((i) => i.owner?.id === memberId);
+  return {
+    items: filtered,
+    totals: {
+      count: filtered.length,
+      totalCents: filtered.reduce((acc, i) => acc + i.amountCents, 0),
+      pendingCents: filtered
+        .filter((i) => i.status !== "pago")
+        .reduce((acc, i) => acc + i.amountCents, 0),
+    },
+  };
+}
+
 export async function getDashboard(
   familyId: string,
   month: string,
@@ -140,8 +160,21 @@ export async function getDashboard(
   const monthKey = toMonthKey(monthDate);
   const formattedMonthLabel = monthLabel(monthKey);
 
-  // 1. Reutiliza fechamento do mês (rendas, período, regras, divisão e acerto)
-  const monthClose = await getMonthClose(familyId, monthKey);
+  // 1+3+7. Consultas independentes em paralelo: fechamento do mês (rendas, período,
+  // regras, divisão e acerto), despesas do mês e categorias com seus limites.
+  const [monthClose, allExpenses, dbCategories] = await Promise.all([
+    getMonthClose(familyId, monthKey),
+    listExpenses(familyId, monthKey),
+    db
+      .select({
+        id: categories.id,
+        name: categories.name,
+        color: categories.color,
+        monthlyLimitCents: categories.monthlyLimitCents,
+      })
+      .from(categories)
+      .where(eq(categories.familyId, familyId)),
+  ]);
 
   // 2. Lista membros da família para os chips de seleção
   const members: DashboardMember[] = monthClose.members.map((m) => ({
@@ -150,14 +183,12 @@ export async function getDashboard(
     color: m.color,
   }));
 
-  // 3. Busca despesas gerais da família para o mês
-  const allExpenses = await listExpenses(familyId, monthKey);
-
-  // 4. Se houver filtro de membro, busca as despesas específicas dele
+  // 4. Se houver filtro de membro, filtra em memória as despesas já carregadas
+  // (mesma regra de `listExpenses`: "familia"/"" = sem dono) em vez de repetir a consulta.
   const isMemberFiltered = Boolean(memberId);
   const filteredExpenses = isMemberFiltered
-    ? await listExpenses(familyId, monthKey, { memberId })
-    : allExpenses;
+    ? filterByOwner(allExpenses.items, memberId)
+    : { items: allExpenses.items, totals: allExpenses.totals };
 
   const currentExpenses = filteredExpenses.items;
   const currentTotals = filteredExpenses.totals;
@@ -243,16 +274,6 @@ export async function getDashboard(
   }));
 
   // 7. Gastos por categoria (byCategory) com limits da tabela categories
-  const dbCategories = await db
-    .select({
-      id: categories.id,
-      name: categories.name,
-      color: categories.color,
-      monthlyLimitCents: categories.monthlyLimitCents,
-    })
-    .from(categories)
-    .where(eq(categories.familyId, familyId));
-
   const categoryLimitMap = new Map(dbCategories.map((c) => [c.id, c.monthlyLimitCents]));
 
   const catMap = new Map<

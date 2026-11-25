@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { requireMember } from "@/lib/session";
+import { requireMemberCached } from "@/lib/session";
 import { HistoricoClient } from "./_components/HistoricoClient";
 import type { ImportBatchItem } from "./types";
 
@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 export default async function HistoricoImportacoesPage() {
-  const { familyId, role } = await requireMember();
+  const { familyId, role } = await requireMemberCached();
   const canManage = role === "admin" || role === "dono";
 
   let batches: ImportBatchItem[] = [];
