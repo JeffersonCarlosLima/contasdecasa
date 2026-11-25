@@ -32,7 +32,20 @@ export async function sendEmail(payload: SendEmailPayload): Promise<SendEmailRes
   const pass = process.env.SMTP_PASS!;
   const from = process.env.SMTP_FROM || `"Contas da Casa" <${user}>`;
 
-  return new Promise((resolve) => {
+  const timeoutMs = Number(process.env.SMTP_TIMEOUT_MS) > 0 ? Number(process.env.SMTP_TIMEOUT_MS) : 10_000;
+
+  return new Promise((resolveRaw) => {
+    // Limite total do envio: um servidor SMTP que não responde não pode prender a ação para sempre.
+    const sockets: net.Socket[] = [];
+    const timer = setTimeout(() => {
+      resolve({ sent: false, error: "Tempo esgotado ao enviar o e-mail." });
+    }, timeoutMs);
+    function resolve(result: SendEmailResult) {
+      clearTimeout(timer);
+      resolveRaw(result);
+      for (const sock of sockets) sock.destroy();
+    }
+
     const isSecure = port === 465;
 
     function handleDialog(socket: net.Socket | tls.TLSSocket) {
@@ -63,6 +76,7 @@ export async function sendEmail(payload: SendEmailPayload): Promise<SendEmailRes
                 handleDialog(tlsSocket);
               },
             );
+            sockets.push(tlsSocket);
             tlsSocket.on("error", (err) => resolve({ sent: false, error: err.message }));
             return;
           } else if (code === 250 || code === 235 || code === 334) {
@@ -111,11 +125,13 @@ export async function sendEmail(payload: SendEmailPayload): Promise<SendEmailRes
         const socket = tls.connect({ host, port, servername: host }, () => {
           handleDialog(socket);
         });
+        sockets.push(socket);
         socket.on("error", (err) => resolve({ sent: false, error: err.message }));
       } else {
         const socket = net.createConnection({ host, port }, () => {
           handleDialog(socket);
         });
+        sockets.push(socket);
         socket.on("error", (err) => resolve({ sent: false, error: err.message }));
       }
     } catch (err: unknown) {
