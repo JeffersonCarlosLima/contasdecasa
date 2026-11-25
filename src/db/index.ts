@@ -1,6 +1,7 @@
 import "server-only";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
+import { timeQuery } from "@/lib/perf-log";
 import * as schema from "./schema";
 
 const globalForDb = globalThis as unknown as { pool?: Pool };
@@ -36,6 +37,19 @@ export const pool = new Proxy(Object.create(Pool.prototype) as Pool, {
     if (prop === "constructor") return Pool;
     const target = getPool();
     const value = Reflect.get(target, prop, receiver);
+    if (prop === "query" && typeof value === "function") {
+      // Registra consultas lentas (SLOW_QUERY_MS) sem alterar o resultado.
+      return (...args: unknown[]) => {
+        const first = args[0];
+        const text =
+          typeof first === "string"
+            ? first
+            : typeof first === "object" && first !== null && "text" in first
+              ? String((first as { text: unknown }).text)
+              : "";
+        return timeQuery(text, () => (value as (...a: unknown[]) => Promise<unknown>).apply(target, args));
+      };
+    }
     return typeof value === "function" ? value.bind(target) : value;
   },
 });
