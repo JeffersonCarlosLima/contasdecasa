@@ -5,7 +5,7 @@ import { families } from "@/db/schema";
 import { listCategories, listPaymentMethods } from "@/lib/catalog-queries";
 import { parseMonthParam } from "@/lib/dates";
 import { listFamily } from "@/lib/family-queries";
-import { requireMember } from "@/lib/session";
+import { requireMemberCached } from "@/lib/session";
 import { ExpenseForm } from "../_form/ExpenseForm";
 
 export const metadata: Metadata = {
@@ -17,7 +17,7 @@ interface NovaDespesaPageProps {
 }
 
 export default async function NovaDespesaPage({ searchParams }: NovaDespesaPageProps) {
-  const { member, familyId } = await requireMember();
+  const { member, familyId } = await requireMemberCached();
   const search = searchParams ? await searchParams : undefined;
   const mes = parseMonthParam(search?.mes);
 

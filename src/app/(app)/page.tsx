@@ -1,4 +1,4 @@
-import { requireMember } from "@/lib/session";
+import { requireMemberCached } from "@/lib/session";
 import { parseMonthParam } from "@/lib/dates";
 import { getDashboard } from "@/lib/dashboard-queries";
 import { DashboardHeader } from "./_dashboard/DashboardHeader";
@@ -17,7 +17,7 @@ interface PageProps {
 }
 
 export default async function DashboardPage({ searchParams }: PageProps) {
-  const sessionMember = await requireMember();
+  const sessionMember = await requireMemberCached();
   const { mes, membro } = await searchParams;
 
   const month = parseMonthParam(mes);

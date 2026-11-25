@@ -8,25 +8,26 @@ export async function getShellData(familyId: string): Promise<{
   familyName: string;
   memberCount: number;
 }> {
-  const [family] = await db
-    .select({ name: families.name })
-    .from(families)
-    .where(eq(families.id, familyId))
-    .limit(1);
+  const [[family], [countResult]] = await Promise.all([
+    db
+      .select({ name: families.name })
+      .from(families)
+      .where(eq(families.id, familyId))
+      .limit(1),
+    db
+      .select({ count: count() })
+      .from(familyMembers)
+      .where(
+        and(
+          eq(familyMembers.familyId, familyId),
+          eq(familyMembers.status, "ativo")
+        )
+      ),
+  ]);
 
   if (!family) {
     throw new Error("Família não encontrada");
   }
-
-  const [countResult] = await db
-    .select({ count: count() })
-    .from(familyMembers)
-    .where(
-      and(
-        eq(familyMembers.familyId, familyId),
-        eq(familyMembers.status, "ativo")
-      )
-    );
 
   return {
     familyName: family.name,

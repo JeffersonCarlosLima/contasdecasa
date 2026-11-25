@@ -5,7 +5,7 @@ import { listExpenses } from "@/lib/expense-queries";
 import { listCategories } from "@/lib/catalog-queries";
 import { listFamily } from "@/lib/family-queries";
 import { isMonthClosed } from "@/lib/period";
-import { requireMember } from "@/lib/session";
+import { requireMemberCached } from "@/lib/session";
 import { formatBRL } from "@/lib/money";
 import {
   ExpenseListView,
@@ -33,7 +33,7 @@ export default async function DespesasPage({ searchParams }: DespesasPageProps) 
   const memberParam = typeof sp.membro === "string" ? sp.membro : null;
   const loteParam = typeof sp.lote === "string" ? sp.lote : undefined;
 
-  const { familyId } = await requireMember();
+  const { familyId } = await requireMemberCached();
 
   const [expenseData, categories, familyData, closed, batchSummary] =
     await Promise.all([

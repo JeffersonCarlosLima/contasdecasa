@@ -6,7 +6,7 @@ import { families } from "@/db/schema";
 import { listCategories, listPaymentMethods } from "@/lib/catalog-queries";
 import { getExpense } from "@/lib/expense-queries";
 import { listFamily } from "@/lib/family-queries";
-import { requireMember } from "@/lib/session";
+import { requireMemberCached } from "@/lib/session";
 import { ExpenseForm } from "../_form/ExpenseForm";
 
 export const metadata: Metadata = {
@@ -19,7 +19,7 @@ interface EditDespesaPageProps {
 
 export default async function EditDespesaPage({ params }: EditDespesaPageProps) {
   const { id } = await params;
-  const { member, familyId } = await requireMember();
+  const { member, familyId } = await requireMemberCached();
 
   const [expense, categories, paymentMethods, familyData, [familyRow]] = await Promise.all([
     getExpense(familyId, id),

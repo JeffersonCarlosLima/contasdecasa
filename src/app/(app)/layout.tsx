@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { requireMember } from "@/lib/session";
+import { requireMemberCached } from "@/lib/session";
 import { getShellData } from "@/lib/family-queries";
 import { AppShell } from "@/components/app";
 
@@ -8,7 +8,7 @@ export default async function AppLayout({
 }: {
   children: ReactNode;
 }) {
-  const { user, member, familyId } = await requireMember();
+  const { user, member, familyId } = await requireMemberCached();
   const { familyName, memberCount } = await getShellData(familyId);
 
   return (

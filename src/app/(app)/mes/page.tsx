@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { requireMember } from "@/lib/session";
+import { requireMemberCached } from "@/lib/session";
 import { parseMonthParam } from "@/lib/dates";
 import { getMonthClose } from "@/lib/period-queries";
 import { FechamentoClient } from "./_components/FechamentoClient";
@@ -23,7 +23,7 @@ export default async function MesPage({ searchParams }: MesPageProps) {
   const { mes } = await searchParams;
   const month = parseMonthParam(mes);
 
-  const { familyId, role } = await requireMember();
+  const { familyId, role } = await requireMemberCached();
   const data = await getMonthClose(familyId, month);
 
   const canManage = role === "admin" || role === "dono";

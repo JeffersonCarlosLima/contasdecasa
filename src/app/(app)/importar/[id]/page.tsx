@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getBatchReview } from "@/lib/import-queries";
 import { listCategories } from "@/lib/catalog-queries";
 import { listFamily } from "@/lib/family-queries";
-import { requireMember } from "@/lib/session";
+import { requireMemberCached } from "@/lib/session";
 import { BatchReviewView } from "./_components/BatchReviewView";
 
 interface ImportReviewPageProps {
@@ -11,7 +11,7 @@ interface ImportReviewPageProps {
 
 export default async function ImportReviewPage({ params }: ImportReviewPageProps) {
   const { id } = await params;
-  const { familyId } = await requireMember();
+  const { familyId } = await requireMemberCached();
 
   const [reviewData, categories, familyData] = await Promise.all([
     getBatchReview(familyId, id),

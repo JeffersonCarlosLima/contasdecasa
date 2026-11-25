@@ -77,39 +77,37 @@ export async function listExpenses(
 ): Promise<ListExpensesResult> {
   const monthDate = toMonthDate(month);
 
-  // 1. Carregar todos os membros da família para mapeamento de owner, paidBy e criação de grupos
-  const allFamilyMembers = await db
-    .select()
-    .from(familyMembers)
-    .where(eq(familyMembers.familyId, familyId));
+  // 1+2. Membros da família (owner, paidBy e grupos) e despesas do mês não excluídas,
+  // em paralelo: as duas consultas são independentes.
+  const [allFamilyMembers, rows] = await Promise.all([
+    db.select().from(familyMembers).where(eq(familyMembers.familyId, familyId)),
+    db
+      .select({
+        expense: expenses,
+        category: {
+          id: categories.id,
+          name: categories.name,
+          color: categories.color,
+        },
+        paymentMethod: {
+          id: paymentMethods.id,
+          name: paymentMethods.name,
+        },
+      })
+      .from(expenses)
+      .innerJoin(categories, eq(expenses.categoryId, categories.id))
+      .leftJoin(paymentMethods, eq(expenses.paymentMethodId, paymentMethods.id))
+      .where(
+        and(
+          eq(expenses.familyId, familyId),
+          eq(expenses.referenceMonth, monthDate),
+          isNull(expenses.deletedAt)
+        )
+      )
+      .orderBy(expenses.dueDate, desc(expenses.createdAt)),
+  ]);
 
   const memberMap = new Map(allFamilyMembers.map((m) => [m.id, m]));
-
-  // 2. Buscar despesas do mês não excluídas
-  const rows = await db
-    .select({
-      expense: expenses,
-      category: {
-        id: categories.id,
-        name: categories.name,
-        color: categories.color,
-      },
-      paymentMethod: {
-        id: paymentMethods.id,
-        name: paymentMethods.name,
-      },
-    })
-    .from(expenses)
-    .innerJoin(categories, eq(expenses.categoryId, categories.id))
-    .leftJoin(paymentMethods, eq(expenses.paymentMethodId, paymentMethods.id))
-    .where(
-      and(
-        eq(expenses.familyId, familyId),
-        eq(expenses.referenceMonth, monthDate),
-        isNull(expenses.deletedAt)
-      )
-    )
-    .orderBy(expenses.dueDate, desc(expenses.createdAt));
 
   // 3. Mapear para ExpenseItem com status calculado
   let items: ExpenseItem[] = rows.map((row) => {

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { requireMember } from "@/lib/session";
+import { requireMemberCached } from "@/lib/session";
 import { listFamily } from "@/lib/family-queries";
 import { DadosCard } from "./_components/DadosCard";
 import { SenhaCard } from "./_components/SenhaCard";
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 export default async function ContaPage() {
-  const { user, member, familyId, role } = await requireMember();
+  const { user, member, familyId, role } = await requireMemberCached();
 
   let eligibleMembers: Array<{ id: string; displayName: string }> = [];
   if (role === "dono") {

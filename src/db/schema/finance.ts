@@ -79,7 +79,7 @@ export const recurringExpenses = pgTable("recurring_expenses", {
   dueDay: smallint("due_day").notNull(),
   active: boolean("active").notNull().default(true),
   ...timestamps,
-});
+}, (t) => [index("recurring_expenses_family_active_idx").on(t.familyId, t.active)]);
 
 export const expenses = pgTable(
   "expenses",

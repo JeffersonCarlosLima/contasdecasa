@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   check,
+  index,
   integer,
   pgTable,
   smallint,
@@ -52,7 +53,11 @@ export const familyMembers = pgTable(
     status: memberStatus("status").notNull().default("ativo"),
     ...timestamps,
   },
-  (t) => [unique("family_members_family_user_uq").on(t.familyId, t.userId)],
+  (t) => [
+    unique("family_members_family_user_uq").on(t.familyId, t.userId),
+    // `requireMember` busca o membro ativo pelo usuário em toda requisição.
+    index("family_members_user_status_idx").on(t.userId, t.status),
+  ],
 );
 
 export const familyInvites = pgTable("family_invites", {

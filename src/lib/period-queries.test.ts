@@ -88,8 +88,8 @@ describe("period-queries", () => {
     // 1. families
     // 2. monthlyPeriods (period_1, investMode = 'valor', investValue = 50000, closedAt != null)
     // 3. familyMembers
-    // 4. memberIncomes (salary = 300000, extra = 50000)
-    // 5. expenses (1 despesa de 100000, com recurringId)
+    // 4. expenses (1 despesa de 100000, com recurringId) — em paralelo com 1-3
+    // 5. memberIncomes (salary = 300000, extra = 50000) — depende do período
     vi.mocked(db.select)
       .mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
@@ -135,9 +135,12 @@ describe("period-queries", () => {
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockResolvedValue([
             {
-              memberId: "mem_1",
-              salaryCents: 300000,
-              extraCents: 50000,
+              amountCents: 100000,
+              ownerMemberId: null,
+              paidByMemberId: "mem_1",
+              status: "pago",
+              recurringId: "rec_1",
+              description: "Internet",
             },
           ]),
         }),
@@ -146,12 +149,9 @@ describe("period-queries", () => {
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockResolvedValue([
             {
-              amountCents: 100000,
-              ownerMemberId: null,
-              paidByMemberId: "mem_1",
-              status: "pago",
-              recurringId: "rec_1",
-              description: "Internet",
+              memberId: "mem_1",
+              salaryCents: 300000,
+              extraCents: 50000,
             },
           ]),
         }),

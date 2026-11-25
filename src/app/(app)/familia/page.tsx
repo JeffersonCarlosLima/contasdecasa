@@ -1,4 +1,4 @@
-import { requireMember } from "@/lib/session";
+import { requireMemberCached } from "@/lib/session";
 import { getShellData, listFamily } from "@/lib/family-queries";
 import { db } from "@/db";
 import { families } from "@/db/schema";
@@ -10,7 +10,7 @@ export const metadata = {
 };
 
 export default async function FamiliaPage() {
-  const { user, member } = await requireMember();
+  const { user, member } = await requireMemberCached();
 
   const [shellData, familyData, [familyRecord]] = await Promise.all([
     getShellData(member.familyId),
