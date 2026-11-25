@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { markPaid, unmarkPaid } from "../actions";
 
@@ -18,6 +18,8 @@ export function ExpenseRowAction({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  // Mostra o novo estado na hora; volta ao real se a ação falhar (a transição termina).
+  const [optimisticPaid, setOptimisticPaid] = useOptimistic(isPaid);
 
   function handleClick(e: React.MouseEvent) {
     e.stopPropagation();
@@ -27,6 +29,7 @@ export function ExpenseRowAction({
 
     setError(null);
     startTransition(async () => {
+      setOptimisticPaid(!isPaid);
       try {
         const result = isPaid ? await unmarkPaid(id) : await markPaid(id);
         if (!result.ok) {
@@ -49,9 +52,9 @@ export function ExpenseRowAction({
         disabled={disabled || isPending}
         aria-busy={isPending}
         onClick={handleClick}
-        aria-label={isPaid ? "Desfazer pagamento" : "Marcar como paga"}
+        aria-label={optimisticPaid ? "Desfazer pagamento" : "Marcar como paga"}
       >
-        {isPending ? "Salvando…" : isPaid ? "Desfazer" : "Marcar como paga"}
+        {optimisticPaid ? "Desfazer" : "Marcar como paga"}
       </button>
       {error && (
         <span className="caption" role="alert" style={{ color: "var(--danger)" }}>

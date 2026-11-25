@@ -163,3 +163,8 @@ body { font-family: var(--font-sans); color: var(--ink); background: var(--surfa
   }
 }
 
+
+/* Skeleton de carregamento (loading.tsx das rotas) */
+@keyframes cc-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+.cc-skel { background: var(--surface-sunken); border-radius: var(--radius-md); animation: cc-pulse 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .cc-skel { animation: none !important; } }
