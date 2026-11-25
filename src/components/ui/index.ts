@@ -11,3 +11,4 @@ export * from "./SegmentedControl";
 export * from "./SplitCard";
 export * from "./StatusBadge";
 
+export { PageSkeleton } from "./PageSkeleton";
